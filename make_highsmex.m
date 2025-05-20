@@ -4,14 +4,22 @@
 
 %% Inputs
 
-% Path to the HiGHS library include directory
-highsIncludeDir = '.\HiGHS-1.10.0\installcpp20\include\highs';
+if ismac
+    % Path to the HiGHS library include directory
+    highsIncludeDir = '/opt/homebrew/include/highs/';
 
-% Path to folder containing the HiGHS static library
-highsLibIncludeDir = '.\HiGHS-1.10.0\installcpp20\lib';
+    % Path to folder containing the HiGHS static library
+    highsLibIncludeDir = '/opt/homebrew/lib';
+else
+    % Path to the HiGHS library include directory
+    highsIncludeDir = '.\HiGHS-1.10.0\installcpp20\include\highs';
+
+    % Path to folder containing the HiGHS static library
+    highsLibIncludeDir = '.\HiGHS-1.10.0\installcpp20\lib';
+end
 
 % Path to the highsmex.cpp file
-mexSrcFilePath = '.\highsmex.cpp';
+mexSrcFilePath = fullfile('.', 'highsmex.cpp');
 
 %% Build mex file
 
@@ -23,6 +31,9 @@ switch compilerVendor
 
     case 'gnu'
         compflags='CXXFLAGS=''$CXXFLAGS  -std=c++20  -Wall ''';
+
+    case 'apple'
+        compflags='CXXFLAGS="$CXXFLAGS -std=c++20 -mmacosx-version-min=13.4 "';
 end
 
 mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-v', compflags)
