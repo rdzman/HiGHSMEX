@@ -5,18 +5,16 @@
 %% Inputs
 
 if ismac
-    % Path to the HiGHS library include directory
-    highsIncludeDir = '/opt/homebrew/include/highs/';
-
-    % Path to folder containing the HiGHS static library
-    highsLibIncludeDir = '/opt/homebrew/lib';
+    highsInstallDir = '/opt/homebrew';
 else
-    % Path to the HiGHS library include directory
-    highsIncludeDir = '.\HiGHS-1.10.0\installcpp20\include\highs';
-
-    % Path to folder containing the HiGHS static library
-    highsLibIncludeDir = '.\HiGHS-1.10.0\installcpp20\lib';
+    highsInstallDir = '.\HiGHS-1.10.0\installcpp20';
 end
+
+% Path to the HiGHS library include directory
+highsIncludeDir = fullfile(highsInstallDir, 'include', 'highs');
+
+% Path to folder containing the HiGHS static library
+highsLibIncludeDir = fullfile(highsInstallDir, 'lib');
 
 % Path to the highsmex.cpp file
 mexSrcFilePath = fullfile('.', 'highsmex.cpp');
