@@ -4,11 +4,9 @@
 
 %% Inputs
 
-if ismac
-    highsInstallDir = '/opt/homebrew';
-else
-    highsInstallDir = '.\HiGHS-1.10.0\installcpp20';
-end
+highsInstallDir = fullfile('.', 'HiGHS-1.10.0', 'installcpp20');
+% highsInstallDir = fullfile('.', 'HiGHS-1.10.0');
+% highsInstallDir = '/opt/homebrew';
 
 % Path to the HiGHS library include directory
 highsIncludeDir = fullfile(highsInstallDir, 'include', 'highs');
@@ -25,15 +23,16 @@ compilerInfo=mex.getCompilerConfigurations('C++', 'Selected');
 compilerVendor=lower(compilerInfo.Manufacturer);
 switch compilerVendor
     case 'microsoft'
-        compflags='COMPFLAGS="$COMPFLAGS  /std:c++20  /W3 "';
+        compflags={ 'COMPFLAGS="$COMPFLAGS  /std:c++20  /W3 "' };
 
     case 'gnu'
-        compflags='CXXFLAGS=''$CXXFLAGS  -std=c++20  -Wall ''';
+        compflags={ 'CXXFLAGS=''$CXXFLAGS  -std=c++20  -Wall ''' };
 
     case 'apple'
-        compflags='CXXFLAGS="$CXXFLAGS -std=c++20 -mmacosx-version-min=13.4 "';
+        compflags={ 'CXXFLAGS="$CXXFLAGS -std=c++20 -mmacosx-version-min=13.4 "', ...
+                    'LDFLAGS="$LDFLAGS -mmacosx-version-min=13.4 "' };
 end
 
-mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-v', compflags)
+mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-v', compflags{:})
 
 % EOF
