@@ -738,6 +738,21 @@ class MexFunction : public Function {
 		}
 	}
 
+	void checkHighsReturnStatus(const HighsStatus status, const std::string& warnMsg, const std::string& errMsg) {
+		switch (status) {
+		case HighsStatus::kError:
+			throw std::runtime_error(errMsg);
+			break;
+
+		case HighsStatus::kWarning:
+			warning(warnMsg);
+			break;
+
+		default:
+			; // Do nothing
+		}
+	}
+
 	// Pre-condition: Call process2ndArgIn(...) method before calling this method
 	void process1stArgIn(ArgumentList& inputs, Highs& highs, HighsModel& highsModel) {
 		auto const dims = inputs[0].getDimensions();
@@ -785,9 +800,9 @@ class MexFunction : public Function {
 			for (size_t i = 0; i < linearObjectives.size(); ++i) {
 				matlabStructToHighsLinearObjective(linearObjectives[i], linObjStructs, i, highsModel.lp_.num_col_, "first");
 			}
-			if (highs.passLinearObjectives(castToHighsInt(linearObjectives.size()), linearObjectives.data()) != HighsStatus::kOk) {
-				throw std::runtime_error("Failed to pass multiple linear objectives in the first input argument (c) to the HiGHS solver.");
-			}
+			checkHighsReturnStatus(highs.passLinearObjectives(castToHighsInt(linearObjectives.size()), linearObjectives.data()),
+				"Warning issued when passing multiple linear objectives in the first input argument (c) to the HiGHS solver.",
+				"Failed to pass multiple linear objectives in the first input argument (c) to the HiGHS solver.");
 			break;
 		}
 
@@ -1122,9 +1137,9 @@ class MexFunction : public Function {
 			if (isMatStruct) {
 				const StructArray matSoln0Struct(inputs[10]);
 				auto const soln0 = matlabStructToHighsSolution(matSoln0Struct, "eleventh");
-				if (highs.setSolution(soln0) != HighsStatus::kOk) {
-					throw std::runtime_error("Failed to set solution struct in the eleventh input argument (setSoln) with the HiGHS solver.");
-				}
+				checkHighsReturnStatus(highs.setSolution(soln0),
+					"Warning issued when setting the solution struct in the eleventh input argument (setSoln) with the HiGHS solver.",
+					"Failed to set solution struct in the eleventh input argument (setSoln) with the HiGHS solver.");
 			}
 			else {
 				// Received the primal solution as a double vector. Convert it to the sparse representation.				
@@ -1144,9 +1159,9 @@ class MexFunction : public Function {
 					index.push_back(castToHighsInt(i));
 					value.push_back(soln0[i]);
 				}
-				if (highs.setSolution(numEntries, index.data(), value.data()) != HighsStatus::kOk) {
-					throw std::runtime_error("Failed to set solution vector in the eleventh input argument (setSoln) with the HiGHS solver.");
-				}
+				checkHighsReturnStatus(highs.setSolution(numEntries, index.data(), value.data()),
+					"Warning issued when setting the solution vector in the eleventh input argument (setSoln) with the HiGHS solver.",
+					"Failed to set solution vector in the eleventh input argument (setSoln) with the HiGHS solver.");
 			}
 		}
 
@@ -1172,9 +1187,9 @@ class MexFunction : public Function {
 			// Call Highs::setBasis 
 			const StructArray matBasisStruct(inputs[11]);
 			auto const basis = matlabStructToHighsBasis(matBasisStruct, "twelfth");
-			if (highs.setBasis(basis) != HighsStatus::kOk) {
-				throw std::runtime_error("Failed to set basis in the twelfth input argument (setBasis) with the HiGHS solver.");
-			}
+			checkHighsReturnStatus(highs.setBasis(basis),
+				"Warning issued when setting the basis in the twelfth input argument (setBasis) with the HiGHS solver.",
+				"Failed to set basis in the twelfth input argument (setBasis) with the HiGHS solver.");
 		}
 
 		if constexpr (MexDebugPrinting) {
@@ -1194,7 +1209,9 @@ class MexFunction : public Function {
 		) != HighsStatus::kOk) {
 			throw std::runtime_error("Failed to set the logging callback with HiGHS.");
 		}
-		highs.startCallback(HighsCallbackType::kCallbackLogging);
+		checkHighsReturnStatus(highs.startCallback(HighsCallbackType::kCallbackLogging),
+			"Warning issued when attempting to start the logging callback.",
+			"Failed to start the logging callback.");
 
 		// Process input arguments
 		const bool hasMultiLinObjectives = isStruct(inputs[0]);
@@ -1212,9 +1229,9 @@ class MexFunction : public Function {
 		// Pass constraints and hessian to HiGHS
 		retc = highs.passModel(highsModel);
 		throwIfHighsError();
-		if (retc != HighsStatus::kOk) {
-			throw std::runtime_error("Failed to pass the model to the HiGHS solver.");
-		}
+		checkHighsReturnStatus(retc,
+			"Warning issued when passing the model to the HiGHS solver.",
+			"Failed to pass the model to the HiGHS solver.");
 
 		// Set multiple objectives
 		if (hasMultiLinObjectives) {
@@ -1233,9 +1250,9 @@ class MexFunction : public Function {
 		// Run solver
 		retc = highs.run();
 		throwIfHighsError();
-		if (retc != HighsStatus::kOk) {
-			throw std::runtime_error("Failure during running the HiGHS solver.");
-		}
+		checkHighsReturnStatus(retc,
+			"Warning issued during running the HiGHS solver.",
+			"Failure during running the HiGHS solver.");
 
 		// highs.stopCallback(HighsCallbackType::kCallbackLogging); // Not needed. We are exiting after setting outputs
 	}
