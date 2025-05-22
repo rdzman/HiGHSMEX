@@ -748,7 +748,7 @@ class MexFunction : public Function {
 			if (!(isVector(dims) && numelIn0 == highsModel.lp_.num_col_)) {
 				throw std::runtime_error(std::format("First input argument (c) must be a double type vector with length = {}.", highsModel.lp_.num_col_));
 			}
-			TypedArray<double> c(inputs[0]);
+			const TypedArray<double> c(inputs[0]);
 			highsModel.lp_.col_cost_ = matlabVectorToStdVector(c);
 			break;
 		}
@@ -1021,7 +1021,9 @@ class MexFunction : public Function {
 		}
 
 		if (setToDefault) {
-			highsModel.lp_.integrality_.assign(highsModel.lp_.num_col_, HighsVarType::kContinuous);
+			// Do nothing. By default integrality is not set.
+			// NOTE: If we explicitly set all the variables as continuous here then HiGHS emits the following warning.
+			//       "WARNING: No semi-integer/integer variables in model with non-empty integrality"
 		}
 		else {
 			const TypedArray<MATLABString> integralityStrings(inputs[7]);
