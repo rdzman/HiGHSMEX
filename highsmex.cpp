@@ -739,6 +739,9 @@ class MexFunction : public Function {
 	}
 
 	void checkHighsReturnStatus(const HighsStatus status, const std::string& warnMsg, const std::string& errMsg) {
+		// Throw an error if HiGHS passed the error message via the logging callback
+		throwIfHighsError();
+		// Check for the return status
 		switch (status) {
 		case HighsStatus::kError:
 			throw std::runtime_error(errMsg);
@@ -1227,30 +1230,23 @@ class MexFunction : public Function {
 		process10thArgIn(inputs, highsModel);
 
 		// Pass constraints and hessian to HiGHS
-		retc = highs.passModel(highsModel);
-		throwIfHighsError();
-		checkHighsReturnStatus(retc,
+		checkHighsReturnStatus(highs.passModel(highsModel),
 			"Warning issued when passing the model to the HiGHS solver.",
 			"Failed to pass the model to the HiGHS solver.");
 
 		// Set multiple objectives
 		if (hasMultiLinObjectives) {
 			process1stArgIn(inputs, highs, highsModel); // This must be done after passing the model
-			throwIfHighsError();
 		}
 
 		// Set solution for hot starting
 		process11thArgIn(inputs, highs, highsModel.lp_.num_col_); // This must be done after passing the model
-		throwIfHighsError();
 
 		// Set basis
 		process12thArgIn(inputs, highs);
-		throwIfHighsError();
 
 		// Run solver
-		retc = highs.run();
-		throwIfHighsError();
-		checkHighsReturnStatus(retc,
+		checkHighsReturnStatus(highs.run(),
 			"Warning issued during running the HiGHS solver.",
 			"Failure during running the HiGHS solver.");
 
