@@ -663,7 +663,9 @@ class MexFunction : public Function {
 	// Display warning message.
 	void warning(const std::string& msg) {
 		auto const str = std::format("in mex function {}: {}\n", getFunctionNameString(), msg);
-		mtlbEngPtr->feval(u"warning", 0, std::vector<Array>({ factory.createScalar(str) }));
+		mtlbEngPtr->feval(u"warning", 0, std::vector<Array>({
+			factory.createScalar("highs:mex"), factory.createScalar(str)
+			}));
 	}
 
 	// Display error message. This method is meant to be called inside the catch blocks of operator()(...) method.
@@ -1280,6 +1282,10 @@ public:
 			case MexCallSyntax::kSolve:
 				if (!(outputs.size() >= 1 && outputs.size() <= 4)) {
 					throw std::runtime_error("Number of output arguments must be >= 1 and <= 4.");
+				}
+				// CLear the error stack
+				while (!highsLogErrStack.empty()) {
+					highsLogErrStack.pop();
 				}
 				// Process inputs and run the HiGHS solver
 				runSolver(inputs, highs, highsModel);

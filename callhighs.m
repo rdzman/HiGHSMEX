@@ -114,6 +114,10 @@ function varargout = callhighs(varargin)
 %        HiGHS. See https://ergo-code.github.io/HiGHS/stable/options/definitions/
 % basis - Basis struct returned by HiGHS. See
 %         https://ergo-code.github.io/HiGHS/stable/structures/structs/HighsBasis/
+% 
+% NOTE:
+% The warning ID for all the warnings issued by callhighs is highs:mex. To
+% turn off the warnings use warning("off", "highs:mex").
 %
 % CAUTION:
 % Do NOT call the highsmex function directly in MATLAB, otherwise it would
