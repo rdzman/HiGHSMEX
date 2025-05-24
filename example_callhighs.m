@@ -25,7 +25,7 @@ fprintf('Press ENTER to continue.\n'), pause, clc
 
 % This example is taken from https://ergo-code.github.io/HiGHS/stable/interfaces/cpp/library/
 
-% Min    f  =  x_0 +  x_1 + 3
+% Min    f  =  x_0 +  x_1
 % s.t.                x_1 <= 7
 %        5 <=  x_0 + 2x_1 <= 15
 %        6 <= 3x_0 + 2x_1
@@ -50,7 +50,8 @@ fprintf('MILP model status is %s.\nPress ENTER to continue.\n', info.model_statu
 
 % Solve the MILP but this time maximize the objective. Also suppress HiGHS
 % messages that are printed on the MATLAB console.
-options = struct("log_to_console", false);
+options = struct("log_to_console", false); % Specify the option "log_to_console" which should be a logical type.
+options = highsoptset("log_to_console", false); % Specify the option "log_to_console" as a double. It will be cast to the appropriate type.
 [soln, info, opts, basis] = callhighs(c, A, L, U, l, u, [], integrality, options, "max");
 fprintf('\nMILP solution is\n'), disp(soln.col_value)
 fprintf('MILP model status is %s.\nPress ENTER to continue.\n', info.model_status_string), pause, clc
@@ -104,7 +105,7 @@ A = [
     ];
 L = [3, 7, 6, 1, 2, 5, 9, 3, 6, 2];
 c = [0.5, -0.5, 0.01, 0.3, 0.8];
-options = struct("log_to_console", false);
+options = highsoptset("log_to_console", 0);
 
 % Solve the QP
 [soln, info, opts, basis] = callhighs(c, A, L, [], [], [], Q, [], options);
@@ -140,14 +141,14 @@ c(2).rel_tolerance = 0.0;
 c(2).priority = cast(0, intType);
 
 % Solve multi-objective LP with blending
-options = struct("blend_multi_objectives", true);
+options = highsoptset("blend_multi_objectives", 1);
 [soln, info, opts, basis] = callhighs(c, A, L, U, l, u, [], integrality, options);
 % soln.col_value % should be [2; 6]
 fprintf('\nMulti-objective LP (with blending) model status is %s.\nPress ENTER to continue.\n', info.model_status_string), pause, clc
 
 
 % Solve multi-objective LP with lexicographic optimization (with zero abs/rel_tolerance)
-options = struct("blend_multi_objectives", false); % lexicographic optimization
+options = highsoptset("blend_multi_objectives", 0); % lexicographic optimization
 % [soln, info, opts, basis] = callhighs(c, A, L, U, l, u, [], integrality, options); % This should result in error because both the linear objectives have the same priority
 c(1).priority = cast(10, intType);
 [soln, info, opts, basis] = callhighs(c, A, L, U, l, u, [], integrality, options);
@@ -155,7 +156,7 @@ c(1).priority = cast(10, intType);
 fprintf('\nMulti-objective LP (with lexicographic optimization) model status is %s.\nPress ENTER to continue.\n', info.model_status_string), pause, clc
 
 % Solve multi-objective LP with lexicographic optimization after modifying the first linear objective
-options = struct("blend_multi_objectives", false); % lexicographic optimization
+options = highsoptset("blend_multi_objectives", 0); % lexicographic optimization
 c(1).coefficients = [1.0001, 1];
 c(1).abs_tolerance = 1e-5;
 c(1).rel_tolerance = 0.05;
