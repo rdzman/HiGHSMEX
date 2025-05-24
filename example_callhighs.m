@@ -51,7 +51,7 @@ fprintf('MILP model status is %s.\nPress ENTER to continue.\n', info.model_statu
 % Solve the MILP but this time maximize the objective. Also suppress HiGHS
 % messages that are printed on the MATLAB console.
 options = struct("log_to_console", false); % Specify the option "log_to_console" which should be a logical type.
-options = highsoptset("log_to_console", false); % Specify the option "log_to_console" as a double. It will be cast to the appropriate type.
+options = highsoptset("log_to_console", 0); % Specify the option "log_to_console" as a double. It will be cast to the appropriate type.
 [soln, info, opts, basis] = callhighs(c, A, L, U, l, u, [], integrality, options, "max");
 fprintf('\nMILP solution is\n'), disp(soln.col_value)
 fprintf('MILP model status is %s.\nPress ENTER to continue.\n', info.model_status_string), pause, clc

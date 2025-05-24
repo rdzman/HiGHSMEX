@@ -45,16 +45,27 @@ for i=1:numel(optionValues)
     if ~isKey(optionTypeMap, name)
         error('"%s" is not a legal HiGHS option.', name)
     end
+    optclass = optionTypeMap(name);
+
+    if strcmp(optclass, 'string')
+        % If HiGHS option is a C++ string then we accept MATLAB char-array or string
+        if ~(isstring(optionValues{i}) || ischar(optionValues{i}))
+            error('Invalid class of the value of option "%s". Expected it to be char or string but received a %s.',...
+                name, class(optionValues{i}))
+        end
+    else
+        % If HiGHS option is bool/int/double then we accept MATLAB numeric or logical type
+        if ~(isnumeric(optionValues{i}) || islogical(optionValues{i}))
+            error('Invalid class of the value of option "%s". Expected it to be numeric or logical but received a %s.',...
+                name, class(optionValues{i}))
+        end
+    end
+
     if ischar(optionValues{i})
         optionValues{i} = convertCharsToStrings(optionValues{i});
     elseif isstring(optionValues{i})
         % Do nothing
     else
-        optclass = optionTypeMap(name);
-        if ~(isnumeric(optionValues{i}) || islogical(optionValues{i}))
-            error('Invalid class of the value of option "%s". Expected it to be %s but received a %s.',...
-                name, optclass, class(optionValues{i}))
-        end
         optionValues{i} = cast(optionValues{i}, optclass);
     end
 
