@@ -39,8 +39,8 @@ function varargout = callhighs(varargin)
 %
 % 4) [soln, info, opts, basis] = callhighs(c, A, L, U, l, u, Q, integrality, options, objSense, setSoln, setBasis)
 %    Solves the optimization problem. First four inputs (c, A, L, and, U)
-%    are required and the rest are optional. Pass [] for an input argument
-%    to use the default value for that argument.
+%    are required and the rest are optional. Pass [] for any input argument
+%    (except c and A) to use the default value for that argument.
 %
 % INPUTS:
 % c - Vector of column costs in the objective. Offset is set to zero.
@@ -71,8 +71,7 @@ function varargout = callhighs(varargin)
 %               "sc" - Semi-continuous
 %               "si" - Semi-integer
 %               "ii" - Implied integer
-%               Pass [] to set the integrality to continuous for all the
-%               variables. See
+%               Pass [] to omit setting the integrality. See
 %               https://ergo-code.github.io/HiGHS/stable/structures/enums/#HighsVarType
 % options - MATLAB struct with values for the HiGHS user-settable options.
 %           Pass [] to use the default values for the user-settable options.
@@ -127,6 +126,9 @@ function varargout = callhighs(varargin)
 % See MATLAB script example_callhighs.m for examples.
 %
 % Author: Savyasachi Singh
+%
+% Covered by the MIT License (see LICENSE file for details).
+% See https://github.com/savyasachi/HiGHSMEX for more information.
 
 
 % Out of process execution of highsmex function.

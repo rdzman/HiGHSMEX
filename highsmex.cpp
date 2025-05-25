@@ -1,6 +1,9 @@
 /* MATLAB mex wrapper over the HiGHS optimization library (https://github.com/ERGO-Code/HiGHS)
  *
  * Author: Savyasachi Singh
+ *
+ * Covered by the MIT License (see LICENSE file for details).
+ * See https://github.com/savyasachi/HiGHSMEX for more information.
  */
 
 
