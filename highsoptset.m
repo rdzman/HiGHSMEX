@@ -14,6 +14,9 @@ function opts = highsoptset(varargin)
 % opts = highsoptset(opts)
 %
 % Author: Savyasachi Singh
+%
+% Covered by the MIT License (see LICENSE file for details).
+% See https://github.com/savyasachi/HiGHSMEX for more information.
 
 persistent optionTypeMap
 
@@ -29,6 +32,8 @@ end
 
 switch nargin
     case 1
+        assert(isstruct(varargin{1}) && isscalar(varargin{1}), ...
+            "Input argument must be a 1x1 struct.")
         optionNames = fieldnames(varargin{1});
         optionValues = cell(size(optionNames));
         for i=1:numel(optionNames)

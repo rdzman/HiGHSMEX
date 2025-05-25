@@ -4,6 +4,9 @@
 % different features of HiGHS.
 %
 % Author: Savyasachi Singh
+%
+% Covered by the MIT License (see LICENSE file for details).
+% See https://github.com/savyasachi/HiGHSMEX for more information.
 
 %% Get version of HiGHS, and the MATLAB class corresponding to the HighsInt (C++ integer type)
 
