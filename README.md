@@ -34,6 +34,7 @@ Newer releases of MATLAB from R2024 include HiGHS as the LP and MILP solver. The
 + It can be used by MATLAB users with no access to MATLAB's Optimization Toolbox.
 + It is quick and easy to integrate the new releases of HiGHS as they become available.
 + Most of the features of HiGHS are available including QP, multi-objective LP, and, hot-starting.
++ Provides access to all the options of HiGHS.
 ## License
 HiGHSMEX is covered by the [MIT](https://choosealicense.com/licenses/mit/) license.
 
