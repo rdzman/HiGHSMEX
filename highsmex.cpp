@@ -626,7 +626,7 @@ void setHighsOptions(Highs& highs, const StructArray& opts, const std::string& m
 //	start[ncol] = nnz;
 //}
 // Convert MATLAB full matrix to HIGHS sparse representation.
-void matlabMatrixToHighsFormat(
+HighsInt matlabMatrixToHighsFormat(
 	std::vector<HighsInt>& start, std::vector<HighsInt>& index, std::vector<double>& value, // outputs
 	const TypedArray<double>& A, const HighsInt nrow, const HighsInt ncol, const bool doTril // inputs
 ) {
@@ -662,6 +662,7 @@ void matlabMatrixToHighsFormat(
 	}
 	// Here k == nnz
 	start[ncol] = nnz;
+	return nnz;
 }
 
 
@@ -709,7 +710,7 @@ void matlabMatrixToHighsFormat(
 //}
 // Convert MATLAB sparse matrix to HIGHS sparse representation. The sparse matrix must be specified by the triplet iA, jA, and, vA, where, [iA, jA, vA]=find(A).
 // Pre-condition: iA, jA, vA are vectors of the same length and represent the row indices, column indices (MATLAB based i.e. starting at 1) and values of the non-zero elements of the sparse matrix A respectively.
-void matlabMatrixToHighsFormat(
+HighsInt matlabMatrixToHighsFormat(
 	std::vector<HighsInt>& start, std::vector<HighsInt>& index, std::vector<double>& value, // outputs
 	const TypedArray<double>& iA, const TypedArray<double>& jA, const TypedArray<double>& vA, const HighsInt, const HighsInt ncol, const bool doTril // inputs
 ) {
@@ -746,6 +747,7 @@ void matlabMatrixToHighsFormat(
 	for (HighsInt j = 1; j <= ncol; ++j) {
 		start[j] = start[j - 1] + nnzCol[j - 1];
 	}
+	return nnz;
 }
 
 
@@ -986,7 +988,7 @@ class MexFunction : public Function {
 		highsModel.lp_.a_matrix_.format_ = MatrixFormat::kColwise;
 		if (isSparse) {
 			const CellArray cell(inputs[1]);
-			auto isDoubleVec = [](const Array& arr_) -> bool { return isDouble(arr_) && isVectorArr(arr_); };
+			auto isDoubleVec = [](const Array& arr_) -> bool { return isDouble(arr_) && (isEmpty(arr_) || isVectorArr(arr_)); };
 			if (!(isDoubleVec(cell[0]) && isDoubleVec(cell[1]) && isDoubleVec(cell[2]))) {
 				throw std::runtime_error("The 1st, 2nd, and 3rd elements of the cell array passed as the second input argument (A) must be double type vectors.");
 			}
@@ -1194,7 +1196,7 @@ class MexFunction : public Function {
 			}
 			if (isSparse) {
 				const CellArray cell(inputs[6]);
-				auto isDoubleVec = [](const Array& arr_) -> bool { return isDouble(arr_) && isVectorArr(arr_); };
+				auto isDoubleVec = [](const Array& arr_) -> bool { return isDouble(arr_) && (isEmpty(arr_) || isVectorArr(arr_)); };
 				if (!(isDoubleVec(cell[0]) && isDoubleVec(cell[1]) && isDoubleVec(cell[2]))) {
 					throw std::runtime_error("The 1st, 2nd, and 3rd elements of the cell array passed as the seventh input argument (Q) must be double type vectors.");
 				}
@@ -1205,7 +1207,7 @@ class MexFunction : public Function {
 				if (!(nQ == numel(jQ) && nQ == numel(vQ))) {
 					throw std::runtime_error("The 1st, 2nd, and 3rd elements of the cell array passed as the seventh input argument (Q) must be vectors of the same length.");
 				}
-				matlabMatrixToHighsFormat(
+				auto const nnz = matlabMatrixToHighsFormat(
 					highsModel.hessian_.start_,
 					highsModel.hessian_.index_,
 					highsModel.hessian_.value_,
@@ -1215,10 +1217,11 @@ class MexFunction : public Function {
 					highsModel.hessian_.dim_,
 					highsModel.hessian_.dim_,
 					true);
+				if (!nnz) highsModel.hessian_.dim_ = 0; // If the Hessian is all zeros then set the dimension to 0
 			}
 			else {
 				const TypedArray<double> Q(inputs[6]);
-				matlabMatrixToHighsFormat(
+				auto const nnz = matlabMatrixToHighsFormat(
 					highsModel.hessian_.start_,
 					highsModel.hessian_.index_,
 					highsModel.hessian_.value_,
@@ -1226,6 +1229,7 @@ class MexFunction : public Function {
 					highsModel.hessian_.dim_,
 					highsModel.hessian_.dim_,
 					true);
+				if (!nnz) highsModel.hessian_.dim_ = 0; // If the Hessian is all zeros then set the dimension to 0
 			}
 		}
 

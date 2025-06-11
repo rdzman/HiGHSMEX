@@ -158,11 +158,6 @@ end
 
 function c = sparseMatrixToCell(A)
 
-if ~nnz(A)
-    c=[];
-    return
-end
-
 c = cell(1, 5);
 [c{1}, c{2}, c{3}] = find(A);
 [c{4}, c{5}]=size(A);
