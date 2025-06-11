@@ -342,8 +342,7 @@ StructArray highsInfoToMatlabStruct(const Highs& highs) {
 
 
 // Pre-condition: indx < numel(matStruct)
-void matlabStructToHighsLinearObjective(HighsLinearObjective& out, const StructArray& matStruct,
-	const size_t indx, const HighsInt numCol, const std::string& mexArgInNumberAsStr) {
+void matlabStructToHighsLinearObjective(HighsLinearObjective& out, const StructArray& matStruct, const size_t indx, const std::string& mexArgInNumberAsStr) {
 	if (!isEqualFieldnames(linearObjectiveFields, getFieldNames(matStruct))) {
 		throw std::runtime_error(std::format("Invalid linear objective struct array passed as {} input argument.", mexArgInNumberAsStr));
 	}
@@ -363,10 +362,9 @@ void matlabStructToHighsLinearObjective(HighsLinearObjective& out, const StructA
 		out.offset = arr[0];
 	}
 	{
-		auto checkFun = [numCol](const Array& arr_) -> bool { return numel(arr_) == numCol && isVectorArr(arr_); };
-		throwIfInvalidFieldValue(matStruct, indx, "coefficients", ArrayType::DOUBLE, checkFun,
-			std::format("Field \"coefficients\" of the linear objective struct at index {} of the {} input argument must be a vector of double type and length = {}.",
-				indx + 1, mexArgInNumberAsStr, numCol)); // Add 1 to the index to match MATLAB's indexing
+		throwIfInvalidFieldValue(matStruct, indx, "coefficients", ArrayType::DOUBLE, isVectorArr,
+			std::format("Field \"coefficients\" of the linear objective struct at index {} of the {} input argument must be a vector of double type.",
+				indx + 1, mexArgInNumberAsStr)); // Add 1 to the index to match MATLAB's indexing
 		const TypedArray<double> arr = matStruct[indx]["coefficients"];
 		out.coefficients = matlabVectorToStdVector(arr);
 	}
@@ -755,6 +753,14 @@ void matlabMatrixToHighsFormat(
 /*                                         MEX INTERFACE                                                  */
 /* ------------------------------------------------------------------------------------------------------ */
 
+struct process1stArgInResults {
+	bool isMultiObjective = false; // true if the first input argument is a struct array of linear objectives
+	std::vector<double> colCost; // Column costs if the first input argument is a vector of doubles, or a cell array of 2 elements
+	double offset = 0; // Offset if the first input argument is a cell array of 2 elements
+	std::vector<HighsLinearObjective> linearObjectives; // Linear objectives if the first input argument is a struct array of linear objectives
+};
+
+
 class MexFunction : public Function {
 
 	std::shared_ptr<MATLABEngine> mtlbEngPtr = getEngine();
@@ -881,18 +887,21 @@ class MexFunction : public Function {
 		}
 	}
 
-	// Pre-condition: Call process2ndArgIn(...) method before calling this method
-	void process1stArgIn(ArgumentList& inputs, Highs& highs, HighsModel& highsModel) {
+	// Pre-condition: 1) inputs.size()>0
+	process1stArgInResults process1stArgIn(ArgumentList& inputs) {
+		process1stArgInResults out;
 		auto const dims = inputs[0].getDimensions();
 		auto const numelIn0 = numel(inputs[0]);
 		switch (getType(inputs[0])) {
 		case ArrayType::DOUBLE:
 		{
-			if (!(isVector(dims) && numelIn0 == highsModel.lp_.num_col_)) {
-				throw std::runtime_error(std::format("First input argument (c) must be a double type vector with length = {}.", highsModel.lp_.num_col_));
+			if (!isVector(dims)) {
+				throw std::runtime_error("First input argument (c) must be a double type vector.");
 			}
 			const TypedArray<double> c(inputs[0]);
-			highsModel.lp_.col_cost_ = matlabVectorToStdVector(c);
+			out.isMultiObjective = false;
+			out.colCost = matlabVectorToStdVector(c);
+			out.offset = 0;
 			break;
 		}
 
@@ -903,18 +912,17 @@ class MexFunction : public Function {
 			}
 			const CellArray cell(inputs[0]);
 			auto const dimsCell0 = cell[0].getDimensions();
-			if (!(isDouble(cell[0]) && isVector(dimsCell0) && numel(cell[0]) == highsModel.lp_.num_col_)) {
-				throw std::runtime_error(std::format(
-					"The first element of the cell array passed as the first input argument (c) must be a double type vector with length = {}.",
-					highsModel.lp_.num_col_));
+			if (!(isDouble(cell[0]) && isVector(dimsCell0))) {
+				throw std::runtime_error("The first element of the cell array passed as the first input argument (c) must be a double type vector.");
 			}
 			const TypedArray<double> c = cell[0];
 			if (!(isDouble(cell[1]) && isScalar(cell[1]))) {
 				throw std::runtime_error("The second element of the cell array passed as the first input argument (c) must be a double scalar.");
 			}
 			const TypedArray<double> offset = cell[1];
-			highsModel.lp_.col_cost_ = matlabVectorToStdVector(c);
-			highsModel.lp_.offset_ = offset[0];
+			out.isMultiObjective = false;
+			out.colCost = matlabVectorToStdVector(c);
+			out.offset = offset[0];
 			break;
 		}
 
@@ -926,11 +934,10 @@ class MexFunction : public Function {
 			const StructArray linObjStructs(inputs[0]);
 			std::vector<HighsLinearObjective> linearObjectives(numelIn0);
 			for (size_t i = 0; i < linearObjectives.size(); ++i) {
-				matlabStructToHighsLinearObjective(linearObjectives[i], linObjStructs, i, highsModel.lp_.num_col_, "first");
+				matlabStructToHighsLinearObjective(linearObjectives[i], linObjStructs, i, "first");
 			}
-			checkHighsReturnStatus(highs.passLinearObjectives(castToHighsInt(linearObjectives.size()), linearObjectives.data()),
-				"Warning issued when passing multiple linear objectives in the first input argument (c) to the HiGHS solver.",
-				"Failed to pass multiple linear objectives in the first input argument (c) to the HiGHS solver.");
+			out.isMultiObjective = true;
+			out.linearObjectives = std::move(linearObjectives);
 			break;
 		}
 
@@ -938,63 +945,23 @@ class MexFunction : public Function {
 			throw std::runtime_error("First input argument (c) must be a double type vector, or a cell array, or a MATLAB struct array.");
 		}
 
-		if constexpr (MexDebugPrinting) {
-			print("lp_.col_cost_ = "); disp(highsModel.lp_.col_cost_);
-			print(std::format("lp_.offset_ = {}\n", highsModel.lp_.offset_));
-		}
+		return out;
 	}
 
-	//// Pre-condition: inputs.size()>1
-	//void process2ndArgIn(ArgumentList& inputs, HighsModel& highsModel) {
-	//	auto const dims = inputs[1].getDimensions();
-	//	const bool isSparse = getType(inputs[1]) == ArrayType::SPARSE_DOUBLE;
-	//	if (!((isDouble(inputs[1]) || isSparse) && isMatrix(dims))) {
-	//		throw std::runtime_error("Second input argument (A) must be a full or sparse matrix of double type.");
-	//	}
-
-	//	highsModel.lp_.num_col_ = castToHighsInt(dims[1]);
-	//	highsModel.lp_.num_row_ = castToHighsInt(dims[0]);
-	//	// For now initialize the cost and offset fields. They will be populated with actual values after processing the first input argument.
-	//	highsModel.lp_.col_cost_.assign(highsModel.lp_.num_col_, 0);
-	//	highsModel.lp_.offset_ = 0;
-
-	//	highsModel.lp_.a_matrix_.format_ = MatrixFormat::kColwise;
-	//	if (isSparse) {
-	//		const SparseArray<double> A(inputs[1]);
-	//		matlabMatrixToHighsFormat(
-	//			highsModel.lp_.a_matrix_.start_,
-	//			highsModel.lp_.a_matrix_.index_,
-	//			highsModel.lp_.a_matrix_.value_,
-	//			A,
-	//			highsModel.lp_.num_row_,
-	//			highsModel.lp_.num_col_,
-	//			false);
-	//	}
-	//	else {
-	//		const TypedArray<double> A(inputs[1]);
-	//		matlabMatrixToHighsFormat(
-	//			highsModel.lp_.a_matrix_.start_,
-	//			highsModel.lp_.a_matrix_.index_,
-	//			highsModel.lp_.a_matrix_.value_,
-	//			A,
-	//			highsModel.lp_.num_row_,
-	//			highsModel.lp_.num_col_,
-	//			false);
-	//	}
-
-	//	if constexpr (MexDebugPrinting) {
-	//		print("lp_.a_matrix_.start_ = "); disp(highsModel.lp_.a_matrix_.start_);
-	//		print("lp_.a_matrix_.index_ = "); disp(highsModel.lp_.a_matrix_.index_);
-	//		print("lp_.a_matrix_.value_ = "); disp(highsModel.lp_.a_matrix_.value_);
-	//	}
-	//}
-	// Pre-condition: inputs.size()>1
+	// Pre-condition: 1) inputs.size()>1, 2) highsModel.lp_.num_col_ must be set.
 	void process2ndArgIn(ArgumentList& inputs, HighsModel& highsModel) {
+		if (isEmpty(inputs[1])) { // No linear constraints, hence no matrix A
+			highsModel.lp_.num_row_ = 0;
+			highsModel.lp_.a_matrix_.start_.assign(highsModel.lp_.num_col_ + 1, 0);
+			return;
+		}
+
 		bool isSparse = false;
 		if (isDouble(inputs[1])) {
 			auto const dims = inputs[1].getDimensions();
-			if (!isMatrix(dims)) throw std::runtime_error("Second input argument (A) must be a matrix of double type.");
-			highsModel.lp_.num_col_ = castToHighsInt(dims[1]);
+			if (!(isMatrix(dims) && highsModel.lp_.num_col_ == castToHighsInt(dims[1]))) {
+				throw std::runtime_error(std::format("Second input argument (A) must be a matrix of double type with {} columns.", highsModel.lp_.num_col_));
+			}
 			highsModel.lp_.num_row_ = castToHighsInt(dims[0]);
 		}
 		else if (isCell(inputs[1])) {
@@ -1007,16 +974,14 @@ class MexFunction : public Function {
 			}
 			const TypedArray<double> nrowsA = cell[3];
 			const TypedArray<double> ncolsA = cell[4];
-			highsModel.lp_.num_col_ = castToHighsInt(ncolsA[0]);
+			if (highsModel.lp_.num_col_ != castToHighsInt(ncolsA[0])) {
+				throw std::runtime_error(std::format("The 5th element of the cell array passed as the second input argument (A) must be a double scalar equal to {}.", highsModel.lp_.num_col_));
+			}
 			highsModel.lp_.num_row_ = castToHighsInt(nrowsA[0]);
 		}
 		else {
 			throw std::runtime_error("Second input argument (A) must be a matrix of double type or, a cell array of 5 elements.");
 		}
-
-		// For now initialize the cost and offset fields. They will be populated with actual values after processing the first input argument.
-		highsModel.lp_.col_cost_.assign(highsModel.lp_.num_col_, 0);
-		highsModel.lp_.offset_ = 0;
 
 		highsModel.lp_.a_matrix_.format_ = MatrixFormat::kColwise;
 		if (isSparse) {
@@ -1065,6 +1030,15 @@ class MexFunction : public Function {
 
 	// Pre-condition: 1) inputs.size()>2, 2) highsModel.lp_.num_row_ must be set.
 	void process3rdArgIn(ArgumentList& inputs, HighsModel& highsModel) {
+		if (!highsModel.lp_.num_row_) { // No linear constraints, hence no L
+			if (isEmpty(inputs[2])) {
+				return; // No lower bounds on the rows, hence no need to set them
+			}
+			else {
+				throw std::runtime_error("Third input argument (L) must be an empty array when there are no linear constraints.");
+			}
+		}
+
 		bool setToDefault = true;
 		if (!isEmpty(inputs[2])) {
 			auto const dims = inputs[2].getDimensions();
@@ -1092,6 +1066,15 @@ class MexFunction : public Function {
 
 	// Pre-condition: 1) inputs.size()>3, 2) highsModel.lp_.num_row_ must be set.
 	void process4thArgIn(ArgumentList& inputs, HighsModel& highsModel) {
+		if (!highsModel.lp_.num_row_) { // No linear constraints, hence no U
+			if (isEmpty(inputs[3])) {
+				return; // No upper bounds on the rows, hence no need to set them
+			}
+			else {
+				throw std::runtime_error("Fourth input argument (U) must be an empty array when there are no linear constraints.");
+			}
+		}
+
 		bool setToDefault = true;
 		if (!isEmpty(inputs[3])) {
 			auto const dims = inputs[3].getDimensions();
@@ -1171,60 +1154,6 @@ class MexFunction : public Function {
 		}
 	}
 
-	//void process7thArgIn(ArgumentList& inputs, HighsModel& highsModel) {
-	//	bool setToDefault = true;
-	//	bool isSparse;
-	//	ArrayDimensions dims;
-	//	if (inputs.size() > 6) {
-	//		dims = inputs[6].getDimensions();
-	//		isSparse = getType(inputs[6]) == ArrayType::SPARSE_DOUBLE;
-	//		if (!isEmpty(inputs[6])) {
-	//			if (!((isDouble(inputs[6]) || isSparse) && isSquareMatrix(dims))) {
-	//				throw std::runtime_error("Seventh input argument (Q) must be a square matrix (full or sparse) of double type.");
-	//			}
-	//			setToDefault = false;
-	//		}
-	//	}
-
-	//	highsModel.hessian_.format_ = HessianFormat::kTriangular;
-	//	if (setToDefault) {
-	//		highsModel.hessian_.dim_ = 0;
-	//	}
-	//	else {
-	//		highsModel.hessian_.dim_ = castToHighsInt(dims[0]);
-	//		if (highsModel.hessian_.dim_ != highsModel.lp_.num_col_) {
-	//			throw std::runtime_error(std::format("Expected dimension of the seventh input argument (Q) to be {}.", highsModel.lp_.num_col_));
-	//		}
-	//		if (isSparse) {
-	//			const SparseArray<double> Q(inputs[6]);
-	//			matlabMatrixToHighsFormat(
-	//				highsModel.hessian_.start_,
-	//				highsModel.hessian_.index_,
-	//				highsModel.hessian_.value_,
-	//				Q,
-	//				highsModel.hessian_.dim_,
-	//				highsModel.hessian_.dim_,
-	//				true);
-	//		}
-	//		else {
-	//			const TypedArray<double> Q(inputs[6]);
-	//			matlabMatrixToHighsFormat(
-	//				highsModel.hessian_.start_,
-	//				highsModel.hessian_.index_,
-	//				highsModel.hessian_.value_,
-	//				Q,
-	//				highsModel.hessian_.dim_,
-	//				highsModel.hessian_.dim_,
-	//				true);
-	//		}
-	//	}
-
-	//	if constexpr (MexDebugPrinting) {
-	//		print("hessian_.start_ = "); disp(highsModel.hessian_.start_);
-	//		print("hessian_.index_ = "); disp(highsModel.hessian_.index_);
-	//		print("hessian_.value_ = "); disp(highsModel.hessian_.value_);
-	//	}
-	//}
 	void process7thArgIn(ArgumentList& inputs, HighsModel& highsModel) {
 		bool setToDefault = true;
 		bool isSparse = false;
@@ -1496,11 +1425,18 @@ class MexFunction : public Function {
 			"Failed to start the logging callback.");
 
 		// Process input arguments
-		const bool hasMultiLinObjectives = isStruct(inputs[0]);
-		process2ndArgIn(inputs, highsModel); // 2nd input argument should be processed first because it sets the values of highsModel.lp_.num_row_/num_col_ which is needed for processing other input arguments.
-		if (!hasMultiLinObjectives) {
-			process1stArgIn(inputs, highs, highsModel);
+		auto proc1stArgResults = process1stArgIn(inputs);
+		if (proc1stArgResults.isMultiObjective) {
+			highsModel.lp_.num_col_ = castToHighsInt(proc1stArgResults.linearObjectives[0].coefficients.size());
+			highsModel.lp_.col_cost_.assign(highsModel.lp_.num_col_, 0);
+			highsModel.lp_.offset_ = 0;
 		}
+		else {
+			highsModel.lp_.num_col_ = castToHighsInt(proc1stArgResults.colCost.size());
+			highsModel.lp_.col_cost_ = std::move(proc1stArgResults.colCost);
+			highsModel.lp_.offset_ = proc1stArgResults.offset;
+		}
+		process2ndArgIn(inputs, highsModel);
 		process3rdArgIn(inputs, highsModel);
 		process4thArgIn(inputs, highsModel);
 		process5thArgIn(inputs, highsModel);
@@ -1516,8 +1452,12 @@ class MexFunction : public Function {
 			"Failed to pass the model to the HiGHS solver.");
 
 		// Set multiple objectives
-		if (hasMultiLinObjectives) {
-			process1stArgIn(inputs, highs, highsModel); // This must be done after passing the model
+		if (proc1stArgResults.isMultiObjective) {
+			checkHighsReturnStatus(highs.passLinearObjectives(
+				castToHighsInt(proc1stArgResults.linearObjectives.size()),
+				proc1stArgResults.linearObjectives.data()),
+				"Warning issued when passing multiple linear objectives in the first input argument (c) to the HiGHS solver.",
+				"Failed to pass multiple linear objectives in the first input argument (c) to the HiGHS solver.");
 		}
 
 		// Set solution for hot starting
