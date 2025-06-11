@@ -18,6 +18,7 @@
 #include <format>
 #include <type_traits>
 #include <algorithm>
+#include <complex>
 // Include C++ MEX API
 #include "mex.hpp"
 #include "mexAdapter.hpp"
@@ -85,6 +86,12 @@ inline bool isDouble(const Array& arr) noexcept(noexcept(getType(arr))) {
 // Returns true if the input MATLAB array is a struct.
 inline bool isStruct(const Array& arr) noexcept(noexcept(getType(arr))) {
 	return getType(arr) == ArrayType::STRUCT;
+}
+
+
+// Returns true if the input MATLAB array is a cell.
+inline bool isCell(const Array& arr) noexcept(noexcept(getType(arr))) {
+	return getType(arr) == ArrayType::CELL;
 }
 
 
@@ -160,11 +167,45 @@ inline std::string matlabStringToStdString(const MATLABString& matlabStr) {
 }
 
 
+template <typename>
+struct is_std_complex : public std::false_type {};
+
+template <typename T>
+struct is_std_complex<std::complex<T>> : public std::true_type {};
+
+// Extracts the pointer to underlying data from the non-const iterator (`TypedIterator<T>`).
+/* This function does not throw any exceptions. */
+template <typename T>
+inline T* toPointer(const matlab::data::TypedIterator<T>& it) noexcept(noexcept(it.operator->())) {
+	static_assert((std::is_arithmetic<T>::value || is_std_complex<T>::value) && !std::is_const<T>::value,
+		"Template argument T must be a std::is_arithmetic type or std::complex.");
+	return it.operator->();
+}
+
+
+/* Extracts pointer to the first element in the array.
+ * Example usage:
+ * ArrayFactory factory;
+ * TypedArray<double> A = factory.createArray<double>({ 2,2 }, { 1.0, 3.0, 2.0, 4.0 });
+ * auto ptr = getPointer(A);
+ * NOTE: Do not call `getPointer` with temporary object. e.g., the following code is ill-formed.
+ *       auto ptr=getPointer(factory.createArray<double>({ 2,2 },{ 1.0, 3.0, 2.0, 4.0 }));
+ */
+template <typename T>
+inline T* getPointer(matlab::data::TypedArray<T>& arr) noexcept(noexcept(toPointer(arr.begin()))) {
+	return toPointer(arr.begin());
+}
+template <typename T>
+inline const T* getPointer(const matlab::data::TypedArray<T>& arr) noexcept(noexcept(toPointer(arr.begin()))) {
+	return getPointer(const_cast<matlab::data::TypedArray<T>&>(arr));
+}
+
+
 // Convert std::vector to MATLAB vector.
 template <typename T>
-inline TypedArray<T> stdVectorToMatlabVector(const std::vector<T>& v, const bool rowShape) {
+TypedArray<T> stdVectorToMatlabVector(const std::vector<T>& v, const bool rowShape) {
 	auto out = factory.createArray<T>(rowShape ? ArrayDimensions({ 1, v.size() }) : ArrayDimensions({ v.size(), 1 }));
-	std::copy(v.begin(), v.end(), out.begin());
+	std::copy(v.begin(), v.end(), getPointer(out));
 	return out;
 }
 
@@ -172,7 +213,8 @@ inline TypedArray<T> stdVectorToMatlabVector(const std::vector<T>& v, const bool
 // Convert MATLAB vector to std::vector.
 template <typename T>
 inline std::vector<T> matlabVectorToStdVector(const TypedArray<T>& arr) {
-	return { arr.begin(), arr.end() };
+	auto pBegin = getPointer(arr);
+	return { pBegin, pBegin + numel(arr) };
 }
 
 
@@ -555,57 +597,136 @@ void setHighsOptions(Highs& highs, const StructArray& opts, const std::string& m
 }
 
 
+//// Convert MATLAB full matrix to HIGHS sparse representation. This implementation is slow because accessing MATLAB TypedArray elements using operator[] is slow.
+//void matlabMatrixToHighsFormat(
+//	std::vector<HighsInt>& start, std::vector<HighsInt>& index, std::vector<double>& value, // outputs
+//	const TypedArray<double>& A, const HighsInt nrow, const HighsInt ncol, const bool doTril // inputs
+//) {
+//	// Count the number of non-zero elements
+//	HighsInt nnz = 0;
+//	for (HighsInt j = 0; j < ncol; ++j) {
+//		for (HighsInt i = doTril ? j : 0; i < nrow; ++i) {
+//			if (A[i][j] != 0) ++nnz;
+//		}
+//	}
+//	// Resize outputs
+//	start.resize(ncol + 1);
+//	index.resize(nnz);
+//	value.resize(nnz);
+//	// Loop over all (or lower triangular) the elements of A and copy non-zero values to the outputs	
+//	HighsInt k = 0;
+//	for (HighsInt j = 0; j < ncol; ++j) {
+//		start[j] = k;
+//		for (HighsInt i = doTril ? j : 0; i < nrow; ++i) {
+//			if (!A[i][j]) continue;
+//			index[k] = i;
+//			value[k] = A[i][j];
+//			++k;
+//		}
+//	}
+//	// Here k == nnz
+//	start[ncol] = nnz;
+//}
 // Convert MATLAB full matrix to HIGHS sparse representation.
 void matlabMatrixToHighsFormat(
 	std::vector<HighsInt>& start, std::vector<HighsInt>& index, std::vector<double>& value, // outputs
 	const TypedArray<double>& A, const HighsInt nrow, const HighsInt ncol, const bool doTril // inputs
 ) {
+	if (A.getMemoryLayout() != MemoryLayout::COLUMN_MAJOR) {
+		throw std::runtime_error("Input matrix must be in column major order.");
+	}
+	auto pA = getPointer(A);
 	// Count the number of non-zero elements
+	auto pAcol = pA; // Pointer to the first element of the first column of A
 	HighsInt nnz = 0;
 	for (HighsInt j = 0; j < ncol; ++j) {
 		for (HighsInt i = doTril ? j : 0; i < nrow; ++i) {
-			if (A[i][j] != 0) ++nnz;
+			if (pAcol[i] != 0) ++nnz;
 		}
+		pAcol += nrow; // Move to the next column
 	}
 	// Resize outputs
 	start.resize(ncol + 1);
 	index.resize(nnz);
 	value.resize(nnz);
 	// Loop over all (or lower triangular) the elements of A and copy non-zero values to the outputs	
+	pAcol = pA; // Pointer to the first element of the first column of A
 	HighsInt k = 0;
 	for (HighsInt j = 0; j < ncol; ++j) {
 		start[j] = k;
 		for (HighsInt i = doTril ? j : 0; i < nrow; ++i) {
-			if (!A[i][j]) continue;
+			if (!pAcol[i]) continue;
 			index[k] = i;
-			value[k] = A[i][j];
+			value[k] = pAcol[i];
 			++k;
 		}
+		pAcol += nrow; // Move to the next column
 	}
 	// Here k == nnz
 	start[ncol] = nnz;
 }
 
 
-// Convert MATLAB sparse matrix to HIGHS sparse representation.
+//// Convert MATLAB sparse matrix to HIGHS sparse representation. This implementation is slow because accessing MATLAB SparseArray elements using iterators is slow.
+//void matlabMatrixToHighsFormat(
+//	std::vector<HighsInt>& start, std::vector<HighsInt>& index, std::vector<double>& value, // outputs
+//	const SparseArray<double>& A, const HighsInt, const HighsInt ncol, const bool doTril // inputs
+//) {
+//	if (A.getMemoryLayout() != MemoryLayout::COLUMN_MAJOR) {
+//		throw std::runtime_error("Input sparse matrix must be in column major order."); // We need this because we want the SparseArray iterator to iterate in column major order
+//	}
+//	// Count the number of non-zero elements
+//	HighsInt nnz = 0;
+//	if (doTril) {
+//		for (auto end = A.end(), it = A.begin(); it != end; ++it) {
+//			auto const inz = A.getIndex(it);
+//			if (inz.first < inz.second) continue; // Skip strictly upper-triangular elements of A
+//			++nnz;
+//		}
+//	}
+//	else {
+//		nnz = castToHighsInt(A.getNumberOfNonZeroElements());
+//	}
+//	// Resize outputs
+//	start.resize(ncol + 1);
+//	index.resize(nnz);
+//	value.resize(nnz);
+//	// Loop over all (or lower triangular) and non-zero elements of A and copy the values to the outputs
+//	HighsInt k = 0;
+//	std::vector<HighsInt> nnzCol(ncol); // nnzCol[i] is the number of non-zero elements in the i'th column of A
+//	nnzCol.assign(ncol, 0);
+//	for (auto end = A.end(), it = A.begin(); it != end; ++it) {
+//		auto const inz = A.getIndex(it); // inz.first/.second is the row/column index of the (non-zero) element pointed to by iterator it.
+//		if (doTril && inz.first < inz.second) continue; // Skip strictly upper-triangular elements of A
+//		++nnzCol[inz.second];
+//		index[k] = castToHighsInt(inz.first);
+//		value[k] = *it;
+//		++k;
+//	}
+//	// Set start
+//	start[0] = 0;
+//	for (HighsInt j = 1; j <= ncol; ++j) {
+//		start[j] = start[j - 1] + nnzCol[j - 1];
+//	}
+//}
+// Convert MATLAB sparse matrix to HIGHS sparse representation. The sparse matrix must be specified by the triplet iA, jA, and, vA, where, [iA, jA, vA]=find(A).
+// Pre-condition: iA, jA, vA are vectors of the same length and represent the row indices, column indices (MATLAB based i.e. starting at 1) and values of the non-zero elements of the sparse matrix A respectively.
 void matlabMatrixToHighsFormat(
 	std::vector<HighsInt>& start, std::vector<HighsInt>& index, std::vector<double>& value, // outputs
-	const SparseArray<double>& A, const HighsInt, const HighsInt ncol, const bool doTril // inputs
+	const TypedArray<double>& iA, const TypedArray<double>& jA, const TypedArray<double>& vA, const HighsInt, const HighsInt ncol, const bool doTril // inputs
 ) {
-	if (A.getMemoryLayout() != MemoryLayout::COLUMN_MAJOR) {
-		throw std::runtime_error("Input sparse matrix must be in column major order."); // We need this because we want the SparseArray iterator to iterate in column major order
-	}
+	auto pI = getPointer(iA), pJ = getPointer(jA), pV = getPointer(vA); // Pointers to the first elements of i, j, v respectively
+	const size_t nA = numel(iA);
 	// Count the number of non-zero elements
 	HighsInt nnz = 0;
 	if (doTril) {
-		for (auto end = A.end(), it = A.begin(); it != end; ++it) {
-			auto const inz = A.getIndex(it);
-			if (inz.first < inz.second) continue; // Skip strictly upper-triangular elements of A
+		for (size_t i = 0; i < nA; ++i) {
+			if (pI[i] < pJ[i]) continue; // Skip strictly upper-triangular elements of A
 			++nnz;
 		}
 	}
 	else {
-		nnz = castToHighsInt(A.getNumberOfNonZeroElements());
+		nnz = castToHighsInt(nA);
 	}
 	// Resize outputs
 	start.resize(ncol + 1);
@@ -615,12 +736,11 @@ void matlabMatrixToHighsFormat(
 	HighsInt k = 0;
 	std::vector<HighsInt> nnzCol(ncol); // nnzCol[i] is the number of non-zero elements in the i'th column of A
 	nnzCol.assign(ncol, 0);
-	for (auto end = A.end(), it = A.begin(); it != end; ++it) {
-		auto const inz = A.getIndex(it); // inz.first/.second is the row/column index of the (non-zero) element pointed to by iterator it.
-		if (doTril && inz.first < inz.second) continue; // Skip strictly upper-triangular elements of A
-		++nnzCol[inz.second];
-		index[k] = castToHighsInt(inz.first);
-		value[k] = *it;
+	for (size_t i = 0; i < nA; ++i) {
+		if (doTril && pI[i] < pJ[i]) continue; // Skip strictly upper-triangular elements of A
+		++nnzCol[castToHighsInt(pJ[i] - 1)]; // -1 to convert MATLAB (one) based index to C++ (zero) based index
+		index[k] = castToHighsInt(pI[i] - 1); // -1 to convert MATLAB (one) based index to C++ (zero) based index
+		value[k] = pV[i];
 		++k;
 	}
 	// Set start
@@ -824,28 +944,101 @@ class MexFunction : public Function {
 		}
 	}
 
+	//// Pre-condition: inputs.size()>1
+	//void process2ndArgIn(ArgumentList& inputs, HighsModel& highsModel) {
+	//	auto const dims = inputs[1].getDimensions();
+	//	const bool isSparse = getType(inputs[1]) == ArrayType::SPARSE_DOUBLE;
+	//	if (!((isDouble(inputs[1]) || isSparse) && isMatrix(dims))) {
+	//		throw std::runtime_error("Second input argument (A) must be a full or sparse matrix of double type.");
+	//	}
+
+	//	highsModel.lp_.num_col_ = castToHighsInt(dims[1]);
+	//	highsModel.lp_.num_row_ = castToHighsInt(dims[0]);
+	//	// For now initialize the cost and offset fields. They will be populated with actual values after processing the first input argument.
+	//	highsModel.lp_.col_cost_.assign(highsModel.lp_.num_col_, 0);
+	//	highsModel.lp_.offset_ = 0;
+
+	//	highsModel.lp_.a_matrix_.format_ = MatrixFormat::kColwise;
+	//	if (isSparse) {
+	//		const SparseArray<double> A(inputs[1]);
+	//		matlabMatrixToHighsFormat(
+	//			highsModel.lp_.a_matrix_.start_,
+	//			highsModel.lp_.a_matrix_.index_,
+	//			highsModel.lp_.a_matrix_.value_,
+	//			A,
+	//			highsModel.lp_.num_row_,
+	//			highsModel.lp_.num_col_,
+	//			false);
+	//	}
+	//	else {
+	//		const TypedArray<double> A(inputs[1]);
+	//		matlabMatrixToHighsFormat(
+	//			highsModel.lp_.a_matrix_.start_,
+	//			highsModel.lp_.a_matrix_.index_,
+	//			highsModel.lp_.a_matrix_.value_,
+	//			A,
+	//			highsModel.lp_.num_row_,
+	//			highsModel.lp_.num_col_,
+	//			false);
+	//	}
+
+	//	if constexpr (MexDebugPrinting) {
+	//		print("lp_.a_matrix_.start_ = "); disp(highsModel.lp_.a_matrix_.start_);
+	//		print("lp_.a_matrix_.index_ = "); disp(highsModel.lp_.a_matrix_.index_);
+	//		print("lp_.a_matrix_.value_ = "); disp(highsModel.lp_.a_matrix_.value_);
+	//	}
+	//}
 	// Pre-condition: inputs.size()>1
 	void process2ndArgIn(ArgumentList& inputs, HighsModel& highsModel) {
-		auto const dims = inputs[1].getDimensions();
-		const bool isSparse = getType(inputs[1]) == ArrayType::SPARSE_DOUBLE;
-		if (!((isDouble(inputs[1]) || isSparse) && isMatrix(dims))) {
-			throw std::runtime_error("Second input argument (A) must be a full or sparse matrix of double type.");
+		bool isSparse = false;
+		if (isDouble(inputs[1])) {
+			auto const dims = inputs[1].getDimensions();
+			if (!isMatrix(dims)) throw std::runtime_error("Second input argument (A) must be a matrix of double type.");
+			highsModel.lp_.num_col_ = castToHighsInt(dims[1]);
+			highsModel.lp_.num_row_ = castToHighsInt(dims[0]);
+		}
+		else if (isCell(inputs[1])) {
+			if (numel(inputs[1]) != 5) throw std::runtime_error("Second input argument (A) must be a cell array of 5 elements.");
+			isSparse = true;
+			const CellArray cell(inputs[1]);
+			// Retrieve the matrix dimensions from the cell array						
+			if (!(isDouble(cell[3]) && isScalar(cell[3]) && isDouble(cell[4]) && isScalar(cell[4]))) {
+				throw std::runtime_error("The 4th and 5th elements of the cell array passed as the second input argument (A) must be double scalars representing the number of rows and columns of A respectively.");
+			}
+			const TypedArray<double> nrowsA = cell[3];
+			const TypedArray<double> ncolsA = cell[4];
+			highsModel.lp_.num_col_ = castToHighsInt(ncolsA[0]);
+			highsModel.lp_.num_row_ = castToHighsInt(nrowsA[0]);
+		}
+		else {
+			throw std::runtime_error("Second input argument (A) must be a matrix of double type or, a cell array of 5 elements.");
 		}
 
-		highsModel.lp_.num_col_ = castToHighsInt(dims[1]);
-		highsModel.lp_.num_row_ = castToHighsInt(dims[0]);
 		// For now initialize the cost and offset fields. They will be populated with actual values after processing the first input argument.
 		highsModel.lp_.col_cost_.assign(highsModel.lp_.num_col_, 0);
 		highsModel.lp_.offset_ = 0;
 
 		highsModel.lp_.a_matrix_.format_ = MatrixFormat::kColwise;
 		if (isSparse) {
-			const SparseArray<double> A(inputs[1]);
+			const CellArray cell(inputs[1]);
+			auto isDoubleVec = [](const Array& arr_) -> bool { return isDouble(arr_) && isVectorArr(arr_); };
+			if (!(isDoubleVec(cell[0]) && isDoubleVec(cell[1]) && isDoubleVec(cell[2]))) {
+				throw std::runtime_error("The 1st, 2nd, and 3rd elements of the cell array passed as the second input argument (A) must be double type vectors.");
+			}
+			const TypedArray<double> iA = cell[0];
+			const TypedArray<double> jA = cell[1];
+			const TypedArray<double> vA = cell[2];
+			auto const nA = numel(iA);
+			if (!(nA == numel(jA) && nA == numel(vA))) {
+				throw std::runtime_error("The 1st, 2nd, and 3rd elements of the cell array passed as the second input argument (A) must be vectors of the same length.");
+			}
 			matlabMatrixToHighsFormat(
 				highsModel.lp_.a_matrix_.start_,
 				highsModel.lp_.a_matrix_.index_,
 				highsModel.lp_.a_matrix_.value_,
-				A,
+				iA,
+				jA,
+				vA,
 				highsModel.lp_.num_row_,
 				highsModel.lp_.num_col_,
 				false);
@@ -868,6 +1061,7 @@ class MexFunction : public Function {
 			print("lp_.a_matrix_.value_ = "); disp(highsModel.lp_.a_matrix_.value_);
 		}
 	}
+
 
 	// Pre-condition: 1) inputs.size()>2, 2) highsModel.lp_.num_row_ must be set.
 	void process3rdArgIn(ArgumentList& inputs, HighsModel& highsModel) {
@@ -977,18 +1171,87 @@ class MexFunction : public Function {
 		}
 	}
 
+	//void process7thArgIn(ArgumentList& inputs, HighsModel& highsModel) {
+	//	bool setToDefault = true;
+	//	bool isSparse;
+	//	ArrayDimensions dims;
+	//	if (inputs.size() > 6) {
+	//		dims = inputs[6].getDimensions();
+	//		isSparse = getType(inputs[6]) == ArrayType::SPARSE_DOUBLE;
+	//		if (!isEmpty(inputs[6])) {
+	//			if (!((isDouble(inputs[6]) || isSparse) && isSquareMatrix(dims))) {
+	//				throw std::runtime_error("Seventh input argument (Q) must be a square matrix (full or sparse) of double type.");
+	//			}
+	//			setToDefault = false;
+	//		}
+	//	}
+
+	//	highsModel.hessian_.format_ = HessianFormat::kTriangular;
+	//	if (setToDefault) {
+	//		highsModel.hessian_.dim_ = 0;
+	//	}
+	//	else {
+	//		highsModel.hessian_.dim_ = castToHighsInt(dims[0]);
+	//		if (highsModel.hessian_.dim_ != highsModel.lp_.num_col_) {
+	//			throw std::runtime_error(std::format("Expected dimension of the seventh input argument (Q) to be {}.", highsModel.lp_.num_col_));
+	//		}
+	//		if (isSparse) {
+	//			const SparseArray<double> Q(inputs[6]);
+	//			matlabMatrixToHighsFormat(
+	//				highsModel.hessian_.start_,
+	//				highsModel.hessian_.index_,
+	//				highsModel.hessian_.value_,
+	//				Q,
+	//				highsModel.hessian_.dim_,
+	//				highsModel.hessian_.dim_,
+	//				true);
+	//		}
+	//		else {
+	//			const TypedArray<double> Q(inputs[6]);
+	//			matlabMatrixToHighsFormat(
+	//				highsModel.hessian_.start_,
+	//				highsModel.hessian_.index_,
+	//				highsModel.hessian_.value_,
+	//				Q,
+	//				highsModel.hessian_.dim_,
+	//				highsModel.hessian_.dim_,
+	//				true);
+	//		}
+	//	}
+
+	//	if constexpr (MexDebugPrinting) {
+	//		print("hessian_.start_ = "); disp(highsModel.hessian_.start_);
+	//		print("hessian_.index_ = "); disp(highsModel.hessian_.index_);
+	//		print("hessian_.value_ = "); disp(highsModel.hessian_.value_);
+	//	}
+	//}
 	void process7thArgIn(ArgumentList& inputs, HighsModel& highsModel) {
 		bool setToDefault = true;
-		bool isSparse;
-		ArrayDimensions dims;
-		if (inputs.size() > 6) {
-			dims = inputs[6].getDimensions();
-			isSparse = getType(inputs[6]) == ArrayType::SPARSE_DOUBLE;
-			if (!isEmpty(inputs[6])) {
-				if (!((isDouble(inputs[6]) || isSparse) && isSquareMatrix(dims))) {
-					throw std::runtime_error("Seventh input argument (Q) must be a square matrix (full or sparse) of double type.");
+		bool isSparse = false;
+		if (inputs.size() > 6 && !isEmpty(inputs[6])) {
+			setToDefault = false;
+			if (isDouble(inputs[6])) {
+				auto const dims = inputs[6].getDimensions();
+				if (!isSquareMatrix(dims)) throw std::runtime_error("Seventh input argument (Q) must be a square matrix of double type.");
+				highsModel.hessian_.dim_ = castToHighsInt(dims[0]);
+			}
+			else if (isCell(inputs[6])) {
+				if (numel(inputs[6]) != 5) throw std::runtime_error("Seventh input argument (Q) must be a cell array of 5 elements.");
+				isSparse = true;
+				const CellArray cell(inputs[6]);
+				// Retrieve the matrix dimensions from the cell array						
+				if (!(isDouble(cell[3]) && isScalar(cell[3]) && isDouble(cell[4]) && isScalar(cell[4]))) {
+					throw std::runtime_error("The 4th and 5th elements of the cell array passed as the Seventh input argument (Q) must be double scalars representing the number of rows and columns of Q respectively.");
 				}
-				setToDefault = false;
+				const TypedArray<double> nrowsQ = cell[3];
+				const TypedArray<double> ncolsQ = cell[4];
+				if (!(castToHighsInt(ncolsQ[0]) == castToHighsInt(nrowsQ[0]))) {
+					throw std::runtime_error("Seventh input argument (Q) must be a square matrix.");
+				}
+				highsModel.hessian_.dim_ = castToHighsInt(ncolsQ[0]);
+			}
+			else {
+				throw std::runtime_error("Seventh input argument (Q) must be a matrix of double type or, a cell array of 5 elements.");
 			}
 		}
 
@@ -997,17 +1260,29 @@ class MexFunction : public Function {
 			highsModel.hessian_.dim_ = 0;
 		}
 		else {
-			highsModel.hessian_.dim_ = castToHighsInt(dims[0]);
 			if (highsModel.hessian_.dim_ != highsModel.lp_.num_col_) {
 				throw std::runtime_error(std::format("Expected dimension of the seventh input argument (Q) to be {}.", highsModel.lp_.num_col_));
 			}
 			if (isSparse) {
-				const SparseArray<double> Q(inputs[6]);
+				const CellArray cell(inputs[6]);
+				auto isDoubleVec = [](const Array& arr_) -> bool { return isDouble(arr_) && isVectorArr(arr_); };
+				if (!(isDoubleVec(cell[0]) && isDoubleVec(cell[1]) && isDoubleVec(cell[2]))) {
+					throw std::runtime_error("The 1st, 2nd, and 3rd elements of the cell array passed as the seventh input argument (Q) must be double type vectors.");
+				}
+				const TypedArray<double> iQ = cell[0];
+				const TypedArray<double> jQ = cell[1];
+				const TypedArray<double> vQ = cell[2];
+				auto const nQ = numel(iQ);
+				if (!(nQ == numel(jQ) && nQ == numel(vQ))) {
+					throw std::runtime_error("The 1st, 2nd, and 3rd elements of the cell array passed as the seventh input argument (Q) must be vectors of the same length.");
+				}
 				matlabMatrixToHighsFormat(
 					highsModel.hessian_.start_,
 					highsModel.hessian_.index_,
 					highsModel.hessian_.value_,
-					Q,
+					iQ,
+					jQ,
+					vQ,
 					highsModel.hessian_.dim_,
 					highsModel.hessian_.dim_,
 					true);
@@ -1031,6 +1306,7 @@ class MexFunction : public Function {
 			print("hessian_.value_ = "); disp(highsModel.hessian_.value_);
 		}
 	}
+
 
 	// Pre-condition: highsModel.lp_.num_col_ must be set.
 	void process8thArgIn(ArgumentList& inputs, HighsModel& highsModel) {
@@ -1207,8 +1483,6 @@ class MexFunction : public Function {
 	}
 
 	void runSolver(ArgumentList& inputs, Highs& highs, HighsModel& highsModel) {
-		HighsStatus retc = HighsStatus::kOk;
-
 		// Set callback with Highs
 		if (highs.setCallback(
 			[this](int callbackType, const std::string& message, const HighsCallbackDataOut* dataOut, HighsCallbackDataIn*, void*) -> void {
@@ -1224,7 +1498,9 @@ class MexFunction : public Function {
 		// Process input arguments
 		const bool hasMultiLinObjectives = isStruct(inputs[0]);
 		process2ndArgIn(inputs, highsModel); // 2nd input argument should be processed first because it sets the values of highsModel.lp_.num_row_/num_col_ which is needed for processing other input arguments.
-		if (!hasMultiLinObjectives) process1stArgIn(inputs, highs, highsModel);
+		if (!hasMultiLinObjectives) {
+			process1stArgIn(inputs, highs, highsModel);
+		}
 		process3rdArgIn(inputs, highsModel);
 		process4thArgIn(inputs, highsModel);
 		process5thArgIn(inputs, highsModel);
@@ -1286,7 +1562,7 @@ public:
 				if (!(outputs.size() >= 1 && outputs.size() <= 4)) {
 					throw std::runtime_error("Number of output arguments must be >= 1 and <= 4.");
 				}
-				// CLear the error stack
+				// Clear the error stack
 				while (!highsLogErrStack.empty()) {
 					highsLogErrStack.pop();
 				}

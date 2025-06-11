@@ -140,6 +140,30 @@ if ~(isa(mh, "matlab.mex.MexHost") && isvalid(mh))
     mh = mexhost;
 end
 
+if nargin>1
+    if issparse(varargin{2})
+        varargin{2} = sparseMatrixToCell(varargin{2});
+    end
+end
+if nargin>6
+    if issparse(varargin{7})
+        varargin{7} = sparseMatrixToCell(varargin{7});
+    end
+end
+
 [varargout{1:nargout}] = feval(mh, "highsmex", varargin{:});
+
+% ----------------------------------------------------------------------- %
+
+function c = sparseMatrixToCell(A)
+
+if ~nnz(A)
+    c=[];
+    return
+end
+
+c = cell(1, 5);
+[c{1}, c{2}, c{3}] = find(A);
+[c{4}, c{5}]=size(A);
 
 % EOF
