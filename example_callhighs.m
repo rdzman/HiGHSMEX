@@ -118,6 +118,10 @@ fprintf('\nQP model status is %s.\nPress ENTER to continue.\n', info.model_statu
 [soln, info, opts, basis] = callhighs(c, sparse(A), L, [], [], [], sparse(Q), [], options);
 fprintf('\nQP model status is %s.\nPress ENTER to continue.\n', info.model_status_string), pause, clc
 
+% Solve unconstrained QP
+[soln, info, opts, basis] = callhighs(c, [], [], [], [], [], Q, [], options);
+fprintf('\nQP model status is %s.\nPress ENTER to continue.\n', info.model_status_string), pause, clc
+
 %% Solve multi-objective LP and MILP
 
 % This example is taken from the test code in HiGHS/check/TestMultiObjective.cpp

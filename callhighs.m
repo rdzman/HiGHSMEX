@@ -40,7 +40,7 @@ function varargout = callhighs(varargin)
 % 4) [soln, info, opts, basis] = callhighs(c, A, L, U, l, u, Q, integrality, options, objSense, setSoln, setBasis)
 %    Solves the optimization problem. First four inputs (c, A, L, and, U)
 %    are required and the rest are optional. Pass [] for any input argument
-%    (except c and A) to use the default value for that argument.
+%    (except c) to use the default value for that argument.
 %
 % INPUTS:
 % c - Vector of column costs in the objective. Offset is set to zero.
@@ -53,7 +53,8 @@ function varargout = callhighs(varargin)
 %     The fields of the struct should be same as the HighsLinearObjective
 %     C++ struct as described here
 %     https://ergo-code.github.io/HiGHS/stable/structures/structs/HighsLinearObjective/
-% A - Linear inequality constraint matrix. It can be full or sparse.
+% A - Linear inequality constraint matrix. It can be full or sparse. Pass
+%     [] to omit the linear inequality constraints.
 % L - Lower bound vector for the linear inequality constraint. Pass [] to
 %     set the lower bound to negative infinity.
 % U - Upper bound vector for the linear inequality constraint. Pass [] to
