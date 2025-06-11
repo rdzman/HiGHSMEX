@@ -53,8 +53,11 @@ function varargout = callhighs(varargin)
 %     The fields of the struct should be same as the HighsLinearObjective
 %     C++ struct as described here
 %     https://ergo-code.github.io/HiGHS/stable/structures/structs/HighsLinearObjective/
-% A - Linear inequality constraint matrix. It can be full or sparse. Pass
-%     [] to omit the linear inequality constraints.
+% A - Linear inequality constraint matrix. It can be full or sparse.
+%                             - OR -
+%     It should be a cell-array of 5 elements in the following format
+%     {i, j, v, nr, nc} where, [i, j, v]=find(A) and [nr, nc]=size(A).
+%     Pass [] to omit the linear inequality constraints.
 % L - Lower bound vector for the linear inequality constraint. Pass [] to
 %     set the lower bound to negative infinity.
 % U - Upper bound vector for the linear inequality constraint. Pass [] to
@@ -64,7 +67,11 @@ function varargout = callhighs(varargin)
 % u - Upper bound vector for the optimization variable. Pass [] to set the
 %     upper bound to infinity.
 % Q - Symmetric matrix for the quadratic objective. It can be full or
-%     sparse. Pass [] to set Q equal to zero.
+%     sparse.
+%                             - OR -
+%     It should be a cell-array of 5 elements in the following format
+%     {i, j, v, nr, nc} where, [i, j, v]=find(Q) and [nr, nc]=size(Q).
+%     Pass [] to set Q equal to zero.
 % integrality - Vector of strings to specify the type of optimization
 %               variable. The possible strings and their meaning are
 %               "c"  - Continuous
