@@ -648,20 +648,25 @@ HighsInt matlabMatrixToHighsFormat(
 	index.resize(nnz);
 	value.resize(nnz);
 	// Loop over all (or lower triangular) the elements of A and copy non-zero values to the outputs	
-	pAcol = pA; // Pointer to the first element of the first column of A
-	HighsInt k = 0;
-	for (HighsInt j = 0; j < ncol; ++j) {
-		start[j] = k;
-		for (HighsInt i = doTril ? j : 0; i < nrow; ++i) {
-			if (!pAcol[i]) continue;
-			index[k] = i;
-			value[k] = pAcol[i];
-			++k;
-		}
-		pAcol += nrow; // Move to the next column
+	if (!nnz) {
+		std::fill(start.begin(), start.end(), 0);
 	}
-	// Here k == nnz
-	start[ncol] = nnz;
+	else {
+		pAcol = pA; // Pointer to the first element of the first column of A
+		HighsInt k = 0;
+		for (HighsInt j = 0; j < ncol; ++j) {
+			start[j] = k;
+			for (HighsInt i = doTril ? j : 0; i < nrow; ++i) {
+				if (!pAcol[i]) continue;
+				index[k] = i;
+				value[k] = pAcol[i];
+				++k;
+			}
+			pAcol += nrow; // Move to the next column
+		}
+		// Here k == nnz
+		start[ncol] = nnz;
+	}
 	return nnz;
 }
 
