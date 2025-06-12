@@ -4,7 +4,7 @@
 MATLAB mex interface to the [HiGHS optimization library.](https://github.com/ERGO-Code/HiGHS)\
 *HiGHSMEX is not a part of the official HiGHS distribution.*\
 \
-HiGHSMEX is built with HiGHS v1.10.0.
+HiGHSMEX is built with HiGHS v1.11.0.
 ## Pre-compiled mex file
 
 For 64-bit Windows and macOS users the pre-compiled mex files *highsmex.mexw64* and *highsmex.mexmaca64* are provided so you do not have to install HiGHS on your system or, compile the mex file. \
@@ -13,7 +13,7 @@ Thanks to [Ray Zimmerman](https://github.com/rdzman) for providing help with the
 
 1. Download or clone the HiGHS code. The *highsmex.cpp* file needs to be compiled with C++20 switch, hence it would be advisable to compile HiGHS with C++20 switch. To do so modify the CMakeLists.txt of HiGHS by changing the line ```set(CMAKE_CXX_STANDARD 11)``` to ```set(CMAKE_CXX_STANDARD 20)```. Install HiGHS as described [here.](https://github.com/ERGO-Code/HiGHS/tree/master/cmake) This should create a static library named *highs* e.g., *highs.lib* on Windows.\
 **Note for macOS users** Your cmake command should look like the following \
-`cmake -S <path-to-source> -B <path-to-build> -DBUILD_SHARED_LIBS=OFF -DZLIB=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.4`\
+`cmake -S <path-to-source> -B <path-to-build> -DBUILD_SHARED_LIBS=OFF -DZLIB=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.4`
 2. Open script named *make_highsmex.m* in MATLAB and specify the inputs. Then execute the script. This should create a mex file named highsmex.mex* e.g., highsmex.mexw64 on 64-bit Windows.\
 I do not have access to MATLAB on a Linux system so I cannot build the mex file myself. The above instructions should work on Linux system also. I am willing to provide assistance to anyone who wants to build the mex file on Linux.
 

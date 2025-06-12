@@ -304,7 +304,12 @@ StructArray highsInfoToMatlabStruct(const Highs& highs) {
 		"pdlp_iteration_count", "qp_iteration_count", "primal_solution_status", "dual_solution_status", "basis_validity",
 		"objective_function_value", "mip_dual_bound", "mip_gap", "max_integrality_violation", "num_primal_infeasibilities",
 		"max_primal_infeasibility", "sum_primal_infeasibilities", "num_dual_infeasibilities", "max_dual_infeasibility",
-		"sum_dual_infeasibilities", "max_complementarity_violation", "sum_complementarity_violations", "primal_dual_integral",
+		"sum_dual_infeasibilities", "num_relative_primal_infeasibilities", "max_relative_primal_infeasibility",
+		"num_relative_dual_infeasibilities", "max_relative_dual_infeasibility", "num_primal_residual_errors",
+		"max_primal_residual_error", "num_dual_residual_errors", "max_dual_residual_error",
+		"num_relative_primal_residual_errors", "max_relative_primal_residual_error", "num_relative_dual_residual_errors",
+		"max_relative_dual_residual_error", "num_complementarity_violations", "max_complementarity_violation",
+		"primal_dual_objective_error", "primal_dual_integral",
 		// These fields are extra. They are added by highsmex.
 		"primal_solution_status_string", "dual_solution_status_string", "basis_validity_string", "model_status_string" });
 	auto const& info = highs.getInfo();
@@ -328,8 +333,21 @@ StructArray highsInfoToMatlabStruct(const Highs& highs) {
 	out[0]["num_dual_infeasibilities"] = factory.createScalar(info.num_dual_infeasibilities);
 	out[0]["max_dual_infeasibility"] = factory.createScalar(info.max_dual_infeasibility);
 	out[0]["sum_dual_infeasibilities"] = factory.createScalar(info.sum_dual_infeasibilities);
+	out[0]["num_relative_primal_infeasibilities"] = factory.createScalar(info.num_relative_primal_infeasibilities);
+	out[0]["max_relative_primal_infeasibility"] = factory.createScalar(info.max_relative_primal_infeasibility);
+	out[0]["num_relative_dual_infeasibilities"] = factory.createScalar(info.num_relative_dual_infeasibilities);
+	out[0]["max_relative_dual_infeasibility"] = factory.createScalar(info.max_relative_dual_infeasibility);
+	out[0]["num_primal_residual_errors"] = factory.createScalar(info.num_primal_residual_errors);
+	out[0]["max_primal_residual_error"] = factory.createScalar(info.max_primal_residual_error);
+	out[0]["num_dual_residual_errors"] = factory.createScalar(info.num_dual_residual_errors);
+	out[0]["max_dual_residual_error"] = factory.createScalar(info.max_dual_residual_error);
+	out[0]["num_relative_primal_residual_errors"] = factory.createScalar(info.num_relative_primal_residual_errors);
+	out[0]["max_relative_primal_residual_error"] = factory.createScalar(info.max_relative_primal_residual_error);
+	out[0]["num_relative_dual_residual_errors"] = factory.createScalar(info.num_relative_dual_residual_errors);
+	out[0]["max_relative_dual_residual_error"] = factory.createScalar(info.max_relative_dual_residual_error);
+	out[0]["num_complementarity_violations"] = factory.createScalar(info.num_complementarity_violations);
 	out[0]["max_complementarity_violation"] = factory.createScalar(info.max_complementarity_violation);
-	out[0]["sum_complementarity_violations"] = factory.createScalar(info.sum_complementarity_violations);
+	out[0]["primal_dual_objective_error"] = factory.createScalar(info.primal_dual_objective_error);
 	out[0]["primal_dual_integral"] = factory.createScalar(info.primal_dual_integral);
 	// Extra fields
 	out[0]["primal_solution_status_string"] = factory.createScalar(highs.solutionStatusToString(info.primal_solution_status));
@@ -1422,11 +1440,10 @@ class MexFunction : public Function {
 
 	void runSolver(ArgumentList& inputs, Highs& highs, HighsModel& highsModel) {
 		// Set callback with Highs
-		if (highs.setCallback(
-			[this](int callbackType, const std::string& message, const HighsCallbackDataOut* dataOut, HighsCallbackDataIn*, void*) -> void {
-				logCallback(callbackType, static_cast<HighsLogType>(dataOut->log_type), message);
-			}
-		) != HighsStatus::kOk) {
+		auto callback = [this](int callbackType, const std::string& message, const HighsCallbackOutput* dataOut, HighsCallbackInput*, void*) -> void {
+			logCallback(callbackType, static_cast<HighsLogType>(dataOut->log_type), message);
+			};
+		if (highs.setCallback(callback, nullptr) != HighsStatus::kOk) {
 			throw std::runtime_error("Failed to set the logging callback with HiGHS.");
 		}
 		checkHighsReturnStatus(highs.startCallback(HighsCallbackType::kCallbackLogging),
