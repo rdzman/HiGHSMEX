@@ -12,9 +12,10 @@
 
 clc, clearvars
 
-ver = callhighs("ver");
+vHighs = callhighs("ver");
+vHighsMex = verHiGHSMEX();
 intType = callhighs("intType");
-fprintf('HiGHS version is v%s.\nHighsInt type is %s.\n', ver, intType)
+fprintf('HiGHS version is v%s.\nHiGHSMEX version is v%s.\nHighsInt type is %s.\n', vHighs, vHighsMex, intType)
 fprintf('Press ENTER to continue.\n'), pause, clc
 
 %% Default values of the user-settable HiGHS options
