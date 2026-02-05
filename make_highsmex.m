@@ -7,9 +7,8 @@
 
 %% Inputs
 
-highsInstallDir = fullfile('.', 'HiGHS-1.13.0', 'installcpp20');
-% highsInstallDir = fullfile('.', 'HiGHS-1.13.0');
-% highsInstallDir = '/opt/homebrew';
+highsInstallDir = fullfile('.', 'highs-1.13.0-x86_64-windows-static-apache'); % link static file distributed by the HiGHS which includes the HiPO solver
+% highsInstallDir = fullfile('.', 'HiGHS-1.13.0', 'installcpp20'); % link static file built from source
 
 % Path to the HiGHS library include directory
 highsIncludeDir = fullfile(highsInstallDir, 'include', 'highs');
@@ -36,6 +35,7 @@ switch compilerVendor
             'LDFLAGS="$LDFLAGS -mmacosx-version-min=13.4 "' };
 end
 
-mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-v', compflags{:})
+% mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-v', compflags{:})
+mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-lopenblas', '-v', compflags{:})
 
 % EOF

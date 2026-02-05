@@ -7,7 +7,7 @@ MATLAB mex interface to the [HiGHS optimization library.](https://github.com/ERG
 HiGHSMEX is built with HiGHS v1.13.0.
 ## Pre-compiled mex file
 
-For 64-bit Windows and macOS users the pre-compiled mex files *highsmex.mexw64* and *highsmex.mexmaca64* are provided so you do not have to install HiGHS on your system or, compile the mex file. Note that these mex files are built without the HiPO solver. The build instructions given below can be used for HiPO solver also after the installing the required dependencies. \
+For 64-bit Windows and macOS users the pre-compiled mex files *highsmex.mexw64* and *highsmex.mexmaca64* are provided so you do not have to install HiGHS on your system or, compile the mex file. \
 Thanks to [Ray Zimmerman](https://github.com/rdzman) for providing help with the compilation of the mex file on macOS platform.
 ## Instructions for compiling from source
 
