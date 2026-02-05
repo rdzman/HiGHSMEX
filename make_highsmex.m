@@ -7,8 +7,8 @@
 
 %% Inputs
 
-highsInstallDir = fullfile('.', 'HiGHS-1.12.0', 'installcpp20');
-% highsInstallDir = fullfile('.', 'HiGHS-1.12.0');
+highsInstallDir = fullfile('.', 'HiGHS-1.13.0', 'installcpp20');
+% highsInstallDir = fullfile('.', 'HiGHS-1.13.0');
 % highsInstallDir = '/opt/homebrew';
 
 % Path to the HiGHS library include directory
