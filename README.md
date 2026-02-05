@@ -4,14 +4,14 @@
 MATLAB mex interface to the [HiGHS optimization library.](https://github.com/ERGO-Code/HiGHS)\
 *HiGHSMEX is not a part of the official HiGHS distribution.*\
 \
-HiGHSMEX is built with HiGHS v1.12.0.
+HiGHSMEX is built with HiGHS v1.13.0.
 ## Pre-compiled mex file
 
-For 64-bit Windows and macOS users the pre-compiled mex files *highsmex.mexw64* and *highsmex.mexmaca64* are provided so you do not have to install HiGHS on your system or, compile the mex file. \
+For 64-bit Windows and macOS users the pre-compiled mex files *highsmex.mexw64* and *highsmex.mexmaca64* are provided so you do not have to install HiGHS on your system or, compile the mex file. Note that these mex files are built without the HiPO solver. The build instructions given below can be used for HiPO solver also after the installing the required dependencies. \
 Thanks to [Ray Zimmerman](https://github.com/rdzman) for providing help with the compilation of the mex file on macOS platform.
 ## Instructions for compiling from source
 
-1. Download or clone the HiGHS code. The *highsmex.cpp* file needs to be compiled with C++20 switch, hence it would be advisable to compile HiGHS with C++20 switch. To do so modify the CMakeLists.txt of HiGHS by changing the line ```set(CMAKE_CXX_STANDARD 11)``` to ```set(CMAKE_CXX_STANDARD 20)```. Install HiGHS as described [here.](https://github.com/ERGO-Code/HiGHS/tree/master/cmake) This should create a static library named *highs* e.g., *highs.lib* on Windows.\
+1. Download or clone the HiGHS code. The *highsmex.cpp* file needs to be compiled with C++20 switch, hence it would be advisable to compile HiGHS with C++20 switch. To do so modify the CMakeLists.txt of HiGHS by changing the line 29 ```set(CMAKE_CXX_STANDARD 11)``` to ```set(CMAKE_CXX_STANDARD 20)``` and line 301 ```set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")``` to ```set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")```. Install HiGHS as described [here.](https://github.com/ERGO-Code/HiGHS/tree/master/cmake) This should create a static library named *highs* e.g., *highs.lib* on Windows.\
 **Note for macOS users** Your cmake command should look like the following \
 `cmake -S <path-to-source> -B <path-to-build> -DBUILD_SHARED_LIBS=OFF -DZLIB=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.4`
 2. Open script named *make_highsmex.m* in MATLAB and specify the inputs. Then execute the script. This should create a mex file named highsmex.mex* e.g., highsmex.mexw64 on 64-bit Windows.\
