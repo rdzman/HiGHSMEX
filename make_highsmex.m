@@ -7,7 +7,14 @@
 
 %% Inputs
 
-highsInstallDir = fullfile('.', 'highs-1.13.1-x86_64-windows-static-apache'); % link static file distributed by the HiGHS which includes the HiPO solver
+% link static file distributed by the HiGHS which includes the HiPO solver
+if ispc
+    highsInstallDir = fullfile('.', 'highs-1.13.1-x86_64-windows-static-apache');
+elseif ismac
+    highsInstallDir = fullfile('..', 'highs-1.13.1-arm-apple-static-apache');
+else
+    disp('highsInstallDir variable not defined in make_highsmex.m');
+end
 % highsInstallDir = fullfile('.', 'HiGHS-1.13.1', 'installcpp20'); % link static file built from source
 
 % Path to the HiGHS library include directory
@@ -36,6 +43,12 @@ switch compilerVendor
 end
 
 % mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-v', compflags{:})
-mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-lopenblas', '-v', compflags{:})
+if ispc
+    mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-lopenblas', '-v', compflags{:})
+elseif ismac
+    mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-lz', ['LDFLAGS=$LDFLAGS -Wl,-framework,Accelerate'], '-v', compflags{:})
+else
+    disp('Inputs to mex command not defined in make_highsmex.m');
+end
 
 % EOF
