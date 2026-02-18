@@ -144,22 +144,26 @@ function varargout = callhighs(varargin)
 
 persistent mh
 
-if ~(isa(mh, "matlab.mex.MexHost") && isvalid(mh))
-    mh = mexhost;
+useMexHostByDefault = true;
+% useMexHostByDefault = false;
+
+if nargin>1 && issparse(varargin{2})
+    varargin{2} = sparseMatrixToCell(varargin{2});
+end
+if nargin>6 && issparse(varargin{7})
+    varargin{7} = sparseMatrixToCell(varargin{7});
 end
 
-if nargin>1
-    if issparse(varargin{2})
-        varargin{2} = sparseMatrixToCell(varargin{2});
+if useMexHostByDefault && ~isdeployed
+    %% OUT-OF-PROCESS (desktop MATLAB only)
+    if ~(isa(mh, "matlab.mex.MexHost") && isvalid(mh))
+        mh = mexhost;
     end
+    [varargout{1:nargout}] = feval(mh, "highsmex", varargin{:});
+else
+    %% IN-PROCESS (for compiled MATLAB code)
+    [varargout{1:nargout}] = highsmex(varargin{:});
 end
-if nargin>6
-    if issparse(varargin{7})
-        varargin{7} = sparseMatrixToCell(varargin{7});
-    end
-end
-
-[varargout{1:nargout}] = feval(mh, "highsmex", varargin{:});
 
 % ----------------------------------------------------------------------- %
 
