@@ -34,7 +34,7 @@ highsmex.o \
 -static-libstdc++ -static-libgcc \
 -o highsmex.mexa64
 
-#$MATLAB/bin/matlab -nodesktop -batch "disp(pwd);example_callhighs;"
+
 
 echo "highsmex.mexa64 ldd output:"
 ldd highsmex.mexa64
@@ -42,3 +42,6 @@ echo "highsmex.mexa64 GLIBCXX_ requirements:"
 strings highsmex.mexa64 | grep GLIBC_
 echo "Build Environment GLIBCXX_ versions:"
 strings /usr/lib/x86_64-linux-gnu/libstdc++.so.6 | grep GLIBCXX_ | sort -V | tail
+
+
+$MATLAB/bin/matlab -nodesktop -batch "example_callhighs;"
