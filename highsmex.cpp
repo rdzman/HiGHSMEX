@@ -15,7 +15,6 @@
 #include <stack>
 #include <exception>
 #include <stdexcept>
-#include <format>
 #include <type_traits>
 #include <algorithm>
 #include <complex>
@@ -166,6 +165,30 @@ inline std::string matlabStringToStdString(const MATLABString& matlabStr) {
 	return matlabStr.has_value() ? convertUTF16StringToUTF8String(*matlabStr) : "";
 }
 
+template <typename T>
+void appendToStream(std::ostringstream& oss, const T& value) {
+	oss << value;
+}
+
+inline void appendToStream(std::ostringstream& oss, const std::string& value) {
+	oss << value;
+}
+
+inline void appendToStream(std::ostringstream& oss, const char* value) {
+	oss << value;
+}
+
+inline void appendToStream(std::ostringstream& oss, const MATLABString& value) {
+	oss << matlabStringToStdString(value);
+}
+
+template <typename... Args>
+std::string formatMessage(const Args&... args) {
+	std::ostringstream oss;
+	(appendToStream(oss, args), ...);
+	return oss.str();
+}
+
 
 template <typename>
 struct is_std_complex : public std::false_type {};
@@ -245,8 +268,7 @@ std::vector<HighsBasisStatus> matlabBasisStatusVectorToStdVector(const TypedArra
 		auto const basisStatusStr = matlabStringToStdString(arr[i]);
 		auto const it_ = stringToHighsBasisStatusMap.find(basisStatusStr);
 		if (it_ == stringToHighsBasisStatusMap.end()) {
-			throw std::runtime_error(std::format("Field \"{}\" of the basis struct passed as the {} input argument has invalid status string at index {}. \"{}\" is not a valid basis status string.",
-				basisStructFieldname, mexArgInNumberAsStr, i + 1, basisStatusStr)); // Add 1 to match MATLAB indexing
+			throw std::runtime_error(formatMessage("Field \"", basisStructFieldname, "\" of the basis struct passed as the ", mexArgInNumberAsStr, " input argument has invalid status string at index ", i + 1, ". \"", basisStatusStr, "\" is not a valid basis status string.")); // Add 1 to match MATLAB indexing
 		}
 		out[i] = it_->second;
 	}
@@ -270,25 +292,25 @@ StructArray highsBasisToMatlabStruct(const Highs& highs) {
 // Pre-condition: matStruct is a 1x1 struct 
 HighsBasis matlabStructToHighsBasis(const StructArray& matStruct, const std::string& mexArgInNumberAsStr) {
 	if (!isEqualFieldnames(matlabBasisStructFields, getFieldNames(matStruct))) {
-		throw std::runtime_error(std::format("Invalid basis struct passed as {} input argument.", mexArgInNumberAsStr));
+		throw std::runtime_error(formatMessage("Invalid basis struct passed as ", mexArgInNumberAsStr, " input argument."));
 	}
 
 	HighsBasis out;
 	{
 		throwIfInvalidFieldValue(matStruct, 0, "valid", ArrayType::LOGICAL, isScalar,
-			std::format("Field \"valid\" of the basis struct passed as the {} input argument must be a scalar of logical type.", mexArgInNumberAsStr));
+			formatMessage("Field \"valid\" of the basis struct passed as the ", mexArgInNumberAsStr, " input argument must be a scalar of logical type."));
 		const TypedArray<bool> arr = matStruct[0]["valid"];
 		out.valid = arr[0];
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, 0, "col_status", ArrayType::MATLAB_STRING, isVectorArr,
-			std::format("Field \"col_status\" of the basis struct passed as the {} input argument must be a vector of MATLAB strings.", mexArgInNumberAsStr));
+			formatMessage("Field \"col_status\" of the basis struct passed as the ", mexArgInNumberAsStr, " input argument must be a vector of MATLAB strings."));
 		const TypedArray<MATLABString> arr = matStruct[0]["col_status"];
 		out.col_status = matlabBasisStatusVectorToStdVector(arr, "col_status", mexArgInNumberAsStr);
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, 0, "row_status", ArrayType::MATLAB_STRING, isVectorArr,
-			std::format("Field \"row_status\" of the basis struct passed as the {} input argument must be a vector of MATLAB strings.", mexArgInNumberAsStr));
+			formatMessage("Field \"row_status\" of the basis struct passed as the ", mexArgInNumberAsStr, " input argument must be a vector of MATLAB strings."));
 		const TypedArray<MATLABString> arr = matStruct[0]["row_status"];
 		out.row_status = matlabBasisStatusVectorToStdVector(arr, "row_status", mexArgInNumberAsStr);
 	}
@@ -363,48 +385,42 @@ StructArray highsInfoToMatlabStruct(const Highs& highs) {
 // Pre-condition: indx < numel(matStruct)
 void matlabStructToHighsLinearObjective(HighsLinearObjective& out, const StructArray& matStruct, const size_t indx, const std::string& mexArgInNumberAsStr) {
 	if (!isEqualFieldnames(linearObjectiveFields, getFieldNames(matStruct))) {
-		throw std::runtime_error(std::format("Invalid linear objective struct array passed as {} input argument.", mexArgInNumberAsStr));
+		throw std::runtime_error(formatMessage("Invalid linear objective struct array passed as ", mexArgInNumberAsStr, " input argument."));
 	}
 
 	{
 		throwIfInvalidFieldValue(matStruct, indx, "weight", ArrayType::DOUBLE, isScalar,
-			std::format("Field \"weight\" of the linear objective struct at index {} of the {} input argument must be a scalar of double type.",
-				indx + 1, mexArgInNumberAsStr)); // Add 1 to the index to match MATLAB's indexing
+			formatMessage("Field \"weight\" of the linear objective struct at index ", indx + 1, " of the ", mexArgInNumberAsStr, " input argument must be a scalar of double type.")); // Add 1 to the index to match MATLAB's indexing
 		const TypedArray<double> arr = matStruct[indx]["weight"];
 		out.weight = arr[0];
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, indx, "offset", ArrayType::DOUBLE, isScalar,
-			std::format("Field \"offset\" of the linear objective struct at index {} of the {} input argument must be a scalar of double type.",
-				indx + 1, mexArgInNumberAsStr)); // Add 1 to the index to match MATLAB's indexing
+			formatMessage("Field \"offset\" of the linear objective struct at index ", indx + 1, " of the ", mexArgInNumberAsStr, " input argument must be a scalar of double type.")); // Add 1 to the index to match MATLAB's indexing
 		const TypedArray<double> arr = matStruct[indx]["offset"];
 		out.offset = arr[0];
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, indx, "coefficients", ArrayType::DOUBLE, isVectorArr,
-			std::format("Field \"coefficients\" of the linear objective struct at index {} of the {} input argument must be a vector of double type.",
-				indx + 1, mexArgInNumberAsStr)); // Add 1 to the index to match MATLAB's indexing
+			formatMessage("Field \"coefficients\" of the linear objective struct at index ", indx + 1, " of the ", mexArgInNumberAsStr, " input argument must be a vector of double type.")); // Add 1 to the index to match MATLAB's indexing
 		const TypedArray<double> arr = matStruct[indx]["coefficients"];
 		out.coefficients = matlabVectorToStdVector(arr);
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, indx, "abs_tolerance", ArrayType::DOUBLE, isScalar,
-			std::format("Field \"abs_tolerance\" of the linear objective struct at index {} of the {} input argument must be a scalar of double type.",
-				indx + 1, mexArgInNumberAsStr)); // Add 1 to the index to match MATLAB's indexing
+			formatMessage("Field \"abs_tolerance\" of the linear objective struct at index ", indx + 1, " of the ", mexArgInNumberAsStr, " input argument must be a scalar of double type.")); // Add 1 to the index to match MATLAB's indexing
 		const TypedArray<double> arr = matStruct[indx]["abs_tolerance"];
 		out.abs_tolerance = arr[0];
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, indx, "rel_tolerance", ArrayType::DOUBLE, isScalar,
-			std::format("Field \"rel_tolerance\" of the linear objective struct at index {} of the {} input argument must be a scalar of double type.",
-				indx + 1, mexArgInNumberAsStr)); // Add 1 to the index to match MATLAB's indexing
+			formatMessage("Field \"rel_tolerance\" of the linear objective struct at index ", indx + 1, " of the ", mexArgInNumberAsStr, " input argument must be a scalar of double type.")); // Add 1 to the index to match MATLAB's indexing
 		const TypedArray<double> arr = matStruct[indx]["rel_tolerance"];
 		out.rel_tolerance = arr[0];
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, indx, "priority", HighsInt2MatlabArrayType, isScalar,
-			std::format("Field \"priority\" of the linear objective struct at index {} of the {} input argument must be a scalar of {} type.",
-				indx + 1, mexArgInNumberAsStr, HighsInt2MatlabClassStr)); // Add 1 to the index to match MATLAB's indexing
+			formatMessage("Field \"priority\" of the linear objective struct at index ", indx + 1, " of the ", mexArgInNumberAsStr, " input argument must be a scalar of ", HighsInt2MatlabClassStr, " type.")); // Add 1 to the index to match MATLAB's indexing
 		const TypedArray<HighsInt> arr = matStruct[indx]["priority"];
 		out.priority = arr[0];
 	}
@@ -428,43 +444,43 @@ StructArray highsSolutionToMatlabStruct(const Highs& highs) {
 // Pre-condition: matStruct is a 1x1 struct
 HighsSolution matlabStructToHighsSolution(const StructArray& matStruct, const std::string& mexArgInNumberAsStr) {
 	if (!isEqualFieldnames(highsSolutionFields, getFieldNames(matStruct))) {
-		throw std::runtime_error(std::format("Invalid solution struct passed as {} input argument.", mexArgInNumberAsStr));
+		throw std::runtime_error(formatMessage("Invalid solution struct passed as ", mexArgInNumberAsStr, " input argument."));
 	}
 
 	HighsSolution out;
 	{
 		throwIfInvalidFieldValue(matStruct, 0, "value_valid", ArrayType::LOGICAL, isScalar,
-			std::format("Field \"value_valid\" of the solution struct passed as the {} input argument must be a scalar of logical type.", mexArgInNumberAsStr));
+			formatMessage("Field \"value_valid\" of the solution struct passed as the ", mexArgInNumberAsStr, " input argument must be a scalar of logical type."));
 		const TypedArray<bool> arr = matStruct[0]["value_valid"];
 		out.value_valid = arr[0];
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, 0, "dual_valid", ArrayType::LOGICAL, isScalar,
-			std::format("Field \"dual_valid\" of the solution struct passed as the {} input argument must be a scalar of logical type.", mexArgInNumberAsStr));
+			formatMessage("Field \"dual_valid\" of the solution struct passed as the ", mexArgInNumberAsStr, " input argument must be a scalar of logical type."));
 		const TypedArray<bool> arr = matStruct[0]["dual_valid"];
 		out.dual_valid = arr[0];
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, 0, "col_value", ArrayType::DOUBLE, isVectorArr,
-			std::format("Field \"col_value\" of the solution struct passed as the {} input argument must be a vector of double type.", mexArgInNumberAsStr));
+			formatMessage("Field \"col_value\" of the solution struct passed as the ", mexArgInNumberAsStr, " input argument must be a vector of double type."));
 		const TypedArray<double> arr = matStruct[0]["col_value"];
 		out.col_value = matlabVectorToStdVector(arr);
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, 0, "col_dual", ArrayType::DOUBLE, isVectorArr,
-			std::format("Field \"col_dual\" of the solution struct passed as the {} input argument must be a vector of double type.", mexArgInNumberAsStr));
+			formatMessage("Field \"col_dual\" of the solution struct passed as the ", mexArgInNumberAsStr, " input argument must be a vector of double type."));
 		const TypedArray<double> arr = matStruct[0]["col_dual"];
 		out.col_dual = matlabVectorToStdVector(arr);
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, 0, "row_value", ArrayType::DOUBLE, isVectorArr,
-			std::format("Field \"row_value\" of the solution struct passed as the {} input argument must be a vector of double type.", mexArgInNumberAsStr));
+			formatMessage("Field \"row_value\" of the solution struct passed as the ", mexArgInNumberAsStr, " input argument must be a vector of double type."));
 		const TypedArray<double> arr = matStruct[0]["row_value"];
 		out.row_value = matlabVectorToStdVector(arr);
 	}
 	{
 		throwIfInvalidFieldValue(matStruct, 0, "row_dual", ArrayType::DOUBLE, isVectorArr,
-			std::format("Field \"row_dual\" of the solution struct passed as the {} input argument must be a vector of double type.", mexArgInNumberAsStr));
+			formatMessage("Field \"row_dual\" of the solution struct passed as the ", mexArgInNumberAsStr, " input argument must be a vector of double type."));
 		const TypedArray<double> arr = matStruct[0]["row_dual"];
 		out.row_dual = matlabVectorToStdVector(arr);
 	}
@@ -553,19 +569,16 @@ void setHighsOptions(Highs& highs, const StructArray& opts, const std::string& m
 	for (auto const& fn : fieldnames) {
 		HighsOptionType optType;
 		if (highs.getOptionType(fn, &optType) != HighsStatus::kOk) {
-			throw std::runtime_error(std::format("Invalid option provided in the struct passed as the {} input argument. \"{}\" is not a legal HiGHS option.",
-				mexArgInNumberAsStr, fn));
+			throw std::runtime_error(formatMessage("Invalid option provided in the struct passed as the ", mexArgInNumberAsStr, " input argument. \"", fn, "\" is not a legal HiGHS option."));
 		}
 		switch (optType) {
 		case HighsOptionType::kBool:
 		{
 			throwIfInvalidFieldValue(opts, 0, fn, ArrayType::LOGICAL, isScalar,
-				std::format("Field \"{}\" of the options struct passed as the {} input argument must be a scalar of logical type.",
-					fn, mexArgInNumberAsStr));
+				formatMessage("Field \"", fn, "\" of the options struct passed as the ", mexArgInNumberAsStr, " input argument must be a scalar of logical type."));
 			const TypedArray<bool> value = opts[0][fn];
 			if (highs.setOptionValue(fn, static_cast<bool>(value[0])) != HighsStatus::kOk) {
-				throw std::runtime_error(std::format("Failed to set the HiGHS option \"{}\". The option struct was passed as the {} input argument.",
-					fn, mexArgInNumberAsStr));
+				throw std::runtime_error(formatMessage("Failed to set the HiGHS option \"", fn, "\". The option struct was passed as the ", mexArgInNumberAsStr, " input argument."));
 			}
 			break;
 		}
@@ -573,12 +586,10 @@ void setHighsOptions(Highs& highs, const StructArray& opts, const std::string& m
 		case HighsOptionType::kInt:
 		{
 			throwIfInvalidFieldValue(opts, 0, fn, HighsInt2MatlabArrayType, isScalar,
-				std::format("Field \"{}\" of the options struct passed as the {} input argument must be a scalar of {} type.",
-					fn, mexArgInNumberAsStr, HighsInt2MatlabClassStr));
+				formatMessage("Field \"", fn, "\" of the options struct passed as the ", mexArgInNumberAsStr, " input argument must be a scalar of ", HighsInt2MatlabClassStr, " type."));
 			const TypedArray<HighsInt> value = opts[0][fn];
 			if (highs.setOptionValue(fn, castToHighsInt(value[0])) != HighsStatus::kOk) {
-				throw std::runtime_error(std::format("Failed to set the HiGHS option \"{}\". The option struct was passed as the {} input argument.",
-					fn, mexArgInNumberAsStr));
+				throw std::runtime_error(formatMessage("Failed to set the HiGHS option \"", fn, "\". The option struct was passed as the ", mexArgInNumberAsStr, " input argument."));
 			}
 			break;
 		}
@@ -586,12 +597,10 @@ void setHighsOptions(Highs& highs, const StructArray& opts, const std::string& m
 		case HighsOptionType::kDouble:
 		{
 			throwIfInvalidFieldValue(opts, 0, fn, ArrayType::DOUBLE, isScalar,
-				std::format("Field \"{}\" of the options struct passed as the {} input argument must be a scalar of double type.",
-					fn, mexArgInNumberAsStr));
+				formatMessage("Field \"", fn, "\" of the options struct passed as the ", mexArgInNumberAsStr, " input argument must be a scalar of double type."));
 			const TypedArray<double> value = opts[0][fn];
 			if (highs.setOptionValue(fn, static_cast<double>(value[0])) != HighsStatus::kOk) {
-				throw std::runtime_error(std::format("Failed to set the HiGHS option \"{}\". The option struct was passed as the {} input argument.",
-					fn, mexArgInNumberAsStr));
+				throw std::runtime_error(formatMessage("Failed to set the HiGHS option \"", fn, "\". The option struct was passed as the ", mexArgInNumberAsStr, " input argument."));
 			}
 			break;
 		}
@@ -599,12 +608,10 @@ void setHighsOptions(Highs& highs, const StructArray& opts, const std::string& m
 		case HighsOptionType::kString:
 		{
 			throwIfInvalidFieldValue(opts, 0, fn, ArrayType::MATLAB_STRING, isScalar,
-				std::format("Field \"{}\" of the options struct passed as the {} input argument must be a MATLAB string.",
-					fn, mexArgInNumberAsStr));
+				formatMessage("Field \"", fn, "\" of the options struct passed as the ", mexArgInNumberAsStr, " input argument must be a MATLAB string."));
 			const TypedArray<MATLABString> value = opts[0][fn];
 			if (highs.setOptionValue(fn, matlabStringToStdString(value[0])) != HighsStatus::kOk) {
-				throw std::runtime_error(std::format("Failed to set the HiGHS option \"{}\". The option struct was passed as the {} input argument.",
-					fn, mexArgInNumberAsStr));
+				throw std::runtime_error(formatMessage("Failed to set the HiGHS option \"", fn, "\". The option struct was passed as the ", mexArgInNumberAsStr, " input argument."));
 			}
 			break;
 		}
@@ -817,7 +824,7 @@ class MexFunction : public Function {
 
 	// Display warning message.
 	void warning(const std::string& msg) {
-		auto const str = std::format("in mex function {}: {}\n", getFunctionNameString(), msg);
+	auto const str = formatMessage("in mex function ", getFunctionNameString(), ": ", msg, "\n");
 		mtlbEngPtr->feval(u"warning", 0, std::vector<Array>({
 			factory.createScalar("highs:mex"), factory.createScalar(str)
 			}));
@@ -825,7 +832,7 @@ class MexFunction : public Function {
 
 	// Display error message. This method is meant to be called inside the catch blocks of operator()(...) method.
 	void error__(const std::string& msg) {
-		auto const str = std::format("Error in mex function {}:\n{}\n", getFunctionNameString(), msg);
+	auto const str = formatMessage("Error in mex function ", getFunctionNameString(), ":\n", msg, "\n");
 		mtlbEngPtr->feval(u"error", 0, std::vector<Array>({ factory.createScalar(str) }));
 	}
 
@@ -986,7 +993,7 @@ class MexFunction : public Function {
 		if (isDouble(inputs[1])) {
 			auto const dims = inputs[1].getDimensions();
 			if (!(isMatrix(dims) && highsModel.lp_.num_col_ == castToHighsInt(dims[1]))) {
-				throw std::runtime_error(std::format("Second input argument (A) must be a matrix of double type with {} columns.", highsModel.lp_.num_col_));
+				throw std::runtime_error(formatMessage("Second input argument (A) must be a matrix of double type with ", highsModel.lp_.num_col_, " columns."));
 			}
 			highsModel.lp_.num_row_ = castToHighsInt(dims[0]);
 		}
@@ -1001,7 +1008,7 @@ class MexFunction : public Function {
 			const TypedArray<double> nrowsA = cell[3];
 			const TypedArray<double> ncolsA = cell[4];
 			if (highsModel.lp_.num_col_ != castToHighsInt(ncolsA[0])) {
-				throw std::runtime_error(std::format("The 5th element of the cell array passed as the second input argument (A) must be a double scalar equal to {}.", highsModel.lp_.num_col_));
+				throw std::runtime_error(formatMessage("The 5th element of the cell array passed as the second input argument (A) must be a double scalar equal to ", highsModel.lp_.num_col_, "."));
 			}
 			highsModel.lp_.num_row_ = castToHighsInt(nrowsA[0]);
 		}
@@ -1080,7 +1087,7 @@ class MexFunction : public Function {
 		else {
 			const TypedArray<double> L(inputs[2]);
 			if (numel(L) != highsModel.lp_.num_row_) {
-				throw std::runtime_error(std::format("Expected length of third input argument (L) to be {}.", highsModel.lp_.num_row_));
+				throw std::runtime_error(formatMessage("Expected length of third input argument (L) to be ", highsModel.lp_.num_row_, "."));
 			}
 			highsModel.lp_.row_lower_ = matlabVectorToStdVector(L);
 		}
@@ -1116,7 +1123,7 @@ class MexFunction : public Function {
 		else {
 			const TypedArray<double> U(inputs[3]);
 			if (numel(U) != highsModel.lp_.num_row_) {
-				throw std::runtime_error(std::format("Expected length of fourth input argument (U) to be {}.", highsModel.lp_.num_row_));
+				throw std::runtime_error(formatMessage("Expected length of fourth input argument (U) to be ", highsModel.lp_.num_row_, "."));
 			}
 			highsModel.lp_.row_upper_ = matlabVectorToStdVector(U);
 		}
@@ -1143,7 +1150,7 @@ class MexFunction : public Function {
 		else {
 			const TypedArray<double> l(inputs[4]);
 			if (numel(l) != highsModel.lp_.num_col_) {
-				throw std::runtime_error(std::format("Expected length of fifth input argument (l) to be {}.", highsModel.lp_.num_col_));
+				throw std::runtime_error(formatMessage("Expected length of fifth input argument (l) to be ", highsModel.lp_.num_col_, "."));
 			}
 			highsModel.lp_.col_lower_ = matlabVectorToStdVector(l);
 		}
@@ -1170,7 +1177,7 @@ class MexFunction : public Function {
 		else {
 			const TypedArray<double> u(inputs[5]);
 			if (numel(u) != highsModel.lp_.num_col_) {
-				throw std::runtime_error(std::format("Expected length of sixth input argument (u) to be {}.", highsModel.lp_.num_col_));
+				throw std::runtime_error(formatMessage("Expected length of sixth input argument (u) to be ", highsModel.lp_.num_col_, "."));
 			}
 			highsModel.lp_.col_upper_ = matlabVectorToStdVector(u);
 		}
@@ -1216,7 +1223,7 @@ class MexFunction : public Function {
 		}
 		else {
 			if (highsModel.hessian_.dim_ != highsModel.lp_.num_col_) {
-				throw std::runtime_error(std::format("Expected dimension of the seventh input argument (Q) to be {}.", highsModel.lp_.num_col_));
+				throw std::runtime_error(formatMessage("Expected dimension of the seventh input argument (Q) to be ", highsModel.lp_.num_col_, "."));
 			}
 			if (isSparse) {
 				const CellArray cell(inputs[6]);
@@ -1284,15 +1291,14 @@ class MexFunction : public Function {
 		else {
 			const TypedArray<MATLABString> integralityStrings(inputs[7]);
 			if (numel(integralityStrings) != highsModel.lp_.num_col_) {
-				throw std::runtime_error(std::format("Expected length of the eighth input argument (integrality) to be {}.", highsModel.lp_.num_col_));
+				throw std::runtime_error(formatMessage("Expected length of the eighth input argument (integrality) to be ", highsModel.lp_.num_col_, "."));
 			}
 			highsModel.lp_.integrality_.resize(numel(integralityStrings));
 			for (size_t i = 0; i < numel(integralityStrings); ++i) {
 				auto const integralityStr = matlabStringToStdString(integralityStrings[i]);
 				auto const it = integralityStringsMap.find(integralityStr);
 				if (it == integralityStringsMap.end()) {
-					throw std::runtime_error(std::format("Invalid string at index {} of the eighth input argument (integrality). \"{}\" is not a valid integrality string.",
-						i + 1, integralityStr)); // Add 1 to the index to match MATLAB's indexing
+					throw std::runtime_error(formatMessage("Invalid string at index ", i + 1, " of the eighth input argument (integrality). \"", integralityStr, "\" is not a valid integrality string.")); // Add 1 to the index to match MATLAB's indexing
 				}
 				highsModel.lp_.integrality_[i] = it->second;
 			}
@@ -1352,7 +1358,7 @@ class MexFunction : public Function {
 		}
 
 		if constexpr (MexDebugPrinting) {
-			print(std::format("lp_.sense_ = {}\n", highsModel.lp_.sense_ == ObjSense::kMinimize ? "kMinimize" : "kMaximize"));
+			print(formatMessage("lp_.sense_ = ", highsModel.lp_.sense_ == ObjSense::kMinimize ? "kMinimize" : "kMaximize", "\n"));
 		}
 	}
 
@@ -1387,7 +1393,7 @@ class MexFunction : public Function {
 				const TypedArray<double> soln0(inputs[10]);
 				auto const n = numel(soln0);
 				if (n != numCol) {
-					throw std::runtime_error(std::format("Expected length of the eleventh input argument (setSoln) to be {}.", numCol));
+					throw std::runtime_error(formatMessage("Expected length of the eleventh input argument (setSoln) to be ", numCol, "."));
 				}
 				std::vector<HighsInt> index;
 				std::vector<double> value;
