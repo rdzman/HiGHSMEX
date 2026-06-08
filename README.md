@@ -7,8 +7,9 @@ MATLAB mex interface to the [HiGHS optimization library.](https://github.com/ERG
 HiGHSMEX is built with HiGHS v1.14.0.
 ## Pre-compiled mex file
 
-For 64-bit Windows and macOS users the pre-compiled mex files *highsmex.mexw64* and *highsmex.mexmaca64* are provided so you do not have to install HiGHS on your system or, compile the mex file. \
-Thanks to [Ray Zimmerman](https://github.com/rdzman) for providing help with the compilation of the mex file on macOS platform.
+For 64-bit Windows, Linux and macOS users the pre-compiled mex files *highsmex.mexw64*, *highsmex.mexa64* and *highsmex.mexmaca64* are provided so you do not have to install HiGHS on your system or, compile the mex file. \
+Thanks to [Ray Zimmerman](https://github.com/rdzman) for providing help with the compilation of the mex file on macOS platform. \
+Thanks to [GenosseFlosse](https://github.com/GenosseFlosse) for providing help with the compilation of the mex file on Linux platform.
 ## Instructions for compiling from source
 
 1. Download or clone the HiGHS code. The *highsmex.cpp* file needs to be compiled with C++20 switch, hence it would be advisable to compile HiGHS with C++20 switch. To do so modify the CMakeLists.txt of HiGHS by changing the line 29 ```set(CMAKE_CXX_STANDARD 11)``` to ```set(CMAKE_CXX_STANDARD 20)``` and line 301 ```set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")``` to ```set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")```. Install HiGHS as described [here.](https://github.com/ERGO-Code/HiGHS/tree/master/cmake) This should create a static library named *highs* e.g., *highs.lib* on Windows.\
