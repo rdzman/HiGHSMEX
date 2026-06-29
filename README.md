@@ -4,7 +4,7 @@
 MATLAB mex interface to the [HiGHS optimization library.](https://github.com/ERGO-Code/HiGHS)\
 *HiGHSMEX is not a part of the official HiGHS distribution.*\
 \
-HiGHSMEX is built with HiGHS v1.14.0.
+HiGHSMEX is built with HiGHS v1.15.0.
 ## Pre-compiled mex file
 
 For 64-bit Windows, Linux and macOS users the pre-compiled mex files *highsmex.mexw64*, *highsmex.mexa64* and *highsmex.mexmaca64* are provided so you do not have to install HiGHS on your system or, compile the mex file. \

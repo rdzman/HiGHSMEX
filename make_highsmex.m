@@ -9,9 +9,9 @@
 
 % link static file distributed by the HiGHS which includes the HiPO solver
 if ispc
-    highsInstallDir = fullfile('.', 'highs-1.14.0-x86_64-windows-static-apache');
+    highsInstallDir = fullfile('.', 'highs-1.15.0-x86_64-windows-static-apache');
 elseif ismac
-    highsInstallDir = fullfile('..', 'highs-1.14.0-arm-apple-static-apache');
+    highsInstallDir = fullfile('..', 'highs-1.15.0-arm-apple-static-apache');
 else
     disp('highsInstallDir variable not defined in make_highsmex.m');
 end
