@@ -1,6 +1,9 @@
 name: Build HiGHSMEX (Windows)
 
 on:
+  push:
+    branches:
+      - testing
   workflow_dispatch:
 
 jobs:
