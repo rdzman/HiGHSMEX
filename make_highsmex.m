@@ -9,7 +9,7 @@
 
 % link static file distributed by the HiGHS which includes the HiPO solver
 if ispc
-    highsInstallDir = fullfile('.', 'highs-1.15.1-x86_64-windows-static-apache');
+    highsInstallDir = fullfile('..', 'HiGHS');
 elseif ismac
     highsInstallDir = fullfile('..', 'highs-1.15.1-arm-apple-static-apache');
 else
