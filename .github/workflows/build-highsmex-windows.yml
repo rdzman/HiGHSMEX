@@ -24,7 +24,7 @@ jobs:
         run: |
           $zipname = "highs-1.15.1-x86_64-windows-static-apache.zip"
           echo $zipname
-          $url = "https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/$zip"
+          $url = "https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/$zipname"
           echo $url
           $parent = Split-Path "${{ github.workspace }}" -Parent
           echo $parent
