@@ -22,24 +22,32 @@ jobs:
       - name: Download HiGHS (Windows static)
         shell: pwsh
         run: |
+          echo "${{ github.workspace }}"
           $zip = "highs-1.15.1-x86_64-windows-static-apache.zip"
           $url = "https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/$zip"
           curl -L -O $url
           $dest = Join-Path "${{ github.workspace }}" ($zip -replace '\.zip$','')
           Expand-Archive -Path $zip -DestinationPath $dest -Force
 
-      - name: List resulting files
-        shell: pwsh
+      - name: List resulting files (bash)
+        shell: bash
         run: |
-          Get-ChildItem -Recurse -Force ${{ github.workspace }} | Select-Object FullName
+          echo "parent dir"
+          ls -al ..
+          echo "MEX files"
+          ls -al *.mex*
 
       - name: Build MEX (make_highsmex.m)
         shell: bash
         run: |
-          $ML_CMD ver
-          $ML_CMD "cd '${{ github.workspace }}'; make_highsmex"
+          $ML_CMD "ver; cd '${{ github.workspace }}'; make_highsmex"
 
-      - name: List resulting files (again)
+      - name: List resulting files (bash)
+        shell: bash
+        run: |
+          ls -al *.mex*
+
+      - name: List resulting files (pwsh)
         shell: pwsh
         run: |
           Get-ChildItem -Recurse -Force ${{ github.workspace }} | Select-Object FullName
