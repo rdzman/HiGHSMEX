@@ -22,8 +22,11 @@ jobs:
       - name: Download HiGHS (Windows static)
         shell: pwsh
         run: |
-          curl -L -O "https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/highs-1.15.1-x86_64-windows-static-apache.zip"
-          Expand-Archive -Path "highs-1.15.1-x86_64-windows-static-apache.zip" -DestinationPath "${{ github.workspace }}" -Force
+          $zip = "highs-1.15.1-x86_64-windows-static-apache.zip"
+          $url = "https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/$zip"
+          curl -L -O $url
+          $dest = Join-Path "${{ github.workspace }}" ($zip -replace '\.zip$','')
+          Expand-Archive -Path $zip -DestinationPath $dest -Force
 
       - name: List resulting files
         shell: pwsh
