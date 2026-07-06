@@ -23,11 +23,16 @@ jobs:
         shell: pwsh
         run: |
           $zipname = "highs-1.15.1-x86_64-windows-static-apache.zip"
+          echo $zipname
           $url = "https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/$zip"
+          echo $url
           $parent = Split-Path "${{ github.workspace }}" -Parent
+          echo $parent
           $zip = Join-Path $parent $zipname
+          echo $zip
           curl -L -o $zip $url
           $dest = Join-Path $parent "HiGHS"
+          echo $dest
           Expand-Archive -Path $zip -DestinationPath $dest -Force
 
       - name: List resulting files (bash)
