@@ -31,10 +31,8 @@ switch compilerVendor
 %         compflags={ 'COMPFLAGS="$COMPFLAGS -std=c++20  -Wall -static-libstdc++ -static-libgcc"' };
         compflags = { 'COMPFLAGS="$COMPFLAGS -std=c++20 -Wall"', ...
             'LINKFLAGS="$LINKFLAGS -static-libstdc++ -static-libgcc"' };
-%        compflags = {
-%            'COMPFLAGS="$COMPFLAGS -std=c++20 -Wall"'
-%            'LDFLAGS="$LDFLAGS -static-libstdc++ -static-libgcc"'
-%        };
+%        compflags = { 'COMPFLAGS="$COMPFLAGS -std=c++20 -Wall"', ...
+%            'LDFLAGS="$LDFLAGS -static-libstdc++ -static-libgcc"' };
 %        compflags={ 'CXXFLAGS="$CXXFLAGS  -std=c++20  -Wall"' };
     case 'apple'
         compflags={ 'CXXFLAGS="$CXXFLAGS -std=c++20 -mmacosx-version-min=13.4 "', ...
@@ -45,6 +43,6 @@ if ispc         % Windows
 elseif ismac    % macOS
     mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibDir), '-lhighs', '-lhighs_extras', '-lz', ['LDFLAGS=$LDFLAGS -Wl,-framework,Accelerate'], '-v', compflags{:})
 elseif isunix   % Linux
-    mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibDir), '-lhighs', '-lhighs_extras', '-lopenblas', '-lz', 'LDFLAGS=$LDFLAGS', '-v', compflags{:})
+    mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibDir), '-lhighs', '-lhighs_extras', '-lopenblas', '-lz', '-v', compflags{:})
 %    mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibDir), '-lhighs', '-lhighs_extras', '-lopenblas', '-lz', 'LDFLAGS=$LDFLAGS -static-libstdc++ -static-libgcc', '-v', compflags{:})
 end
