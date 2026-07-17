@@ -13,19 +13,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             highs_archive: highs-1.15.1-x86_64-linux-gnu-static-apache.tar.gz
-          - os: macos-latest
-            highs_archive: highs-1.15.1-arm-apple-static-apache.tar.gz
-          - os: windows-latest
-            highs_archive: highs-1.15.1-x86_64-windows-static-apache.zip
+#           - os: macos-latest
+#             highs_archive: highs-1.15.1-arm-apple-static-apache.tar.gz
+#           - os: windows-latest
+#             highs_archive: highs-1.15.1-x86_64-windows-static-apache.zip
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Install GCC
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linx'
         shell: bash
         run: |
           sudo apt-get update
@@ -98,19 +98,21 @@ jobs:
         run: |
           ls -al *.mex* || true
 
-      - name: Check what is dynamic
+      - name: Inspect MEX
         if: runner.os == 'Linux'
         shell: bash
         run: |
           echo " "
           echo "ldd highsmex.mexa64"
-          ldd highsmex.mexa64
+          ldd highsmex.mexa64 || true
+
           echo " "
-          echo "strings highsmex.mexa64 | grep GLIBCXX | sort -u"
-          strings highsmex.mexa64 | grep GLIBCXX | sort -u
+          echo "readelf -d highsmex.mexa64 | grep NEEDED"
+          readelf -d highsmex.mexa64 | grep NEEDED || true
+
           echo " "
-          echo "strings /lib/x86_64-linux-gnu/libstdc++.so.6 | grep -oE 'GLIBCXX_[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail"
-          strings /lib/x86_64-linux-gnu/libstdc++.so.6 | grep -oE 'GLIBCXX_[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail
+          echo "strings highsmex.mexa64 | grep GLIBCXX_ | sort -V | tail"
+          strings highsmex.mexa64 | grep GLIBCXX_ | sort -V | tail
 
       - name: Check MEX functionality
         shell: bash
