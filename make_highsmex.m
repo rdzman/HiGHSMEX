@@ -35,7 +35,7 @@ switch compilerVendor
         compflags={ 'COMPFLAGS="$COMPFLAGS  /std:c++20  /W3 "' };
 
     case 'gnu'
-        compflags={ '-std=c++20', ''-Wall' };
+        compflags={ '-std=c++20', '-Wall' };
 %        compflags={ 'CXXFLAGS=''$CXXFLAGS  -std=c++20  -Wall ''' };
 
     case 'apple'

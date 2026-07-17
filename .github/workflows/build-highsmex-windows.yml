@@ -57,3 +57,9 @@ jobs:
         shell: pwsh
         run: |
           Get-ChildItem -Recurse -Force ${{ github.workspace }} | Select-Object FullName
+
+      - name: Check MEX functionality
+        shell: bash
+        run: |
+          $ML_CMD "fprintf('HiGHS Version: %s\nHiGHSMEX Version: %s\n', callhighs(string('ver')), verHiGHSMEX)"
+          $ML_CMD "c = [1;1]; soln=callhighs(c,c', 2, 2, c, c)"
