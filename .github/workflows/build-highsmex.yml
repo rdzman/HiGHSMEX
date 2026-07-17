@@ -15,8 +15,8 @@ jobs:
         include:
           - os: ubuntu-latest
             highs_archive: highs-1.15.1-x86_64-linux-gnu-static-apache.tar.gz
-          - os: macos-latest
-            highs_archive: highs-1.15.1-arm-apple-static-apache.tar.gz
+#           - os: macos-latest
+#             highs_archive: highs-1.15.1-arm-apple-static-apache.tar.gz
 #           - os: windows-latest
 #             highs_archive: highs-1.15.1-x86_64-windows-static-apache.zip
 
@@ -103,12 +103,8 @@ jobs:
         shell: bash
         run: |
           echo " "
-          echo "nm -A ../HiGHS/lib/libhighs.a | grep ios_base_library_init"
-          nm -A ../HiGHS/lib/libhighs.a | grep ios_base_library_init
-
-          echo " "
-          echo "nm -A ../HiGHS/lib/libhighs_extras.a | grep ios_base_library_init"
-          nm -A ../HiGHS/lib/libhighs_extras.a | grep ios_base_library_init
+          echo "strings /opt/hostedtoolcache/MATLAB/2026.1.999/x64/sys/os/glnxa64/libstdc++.so.6 | grep GLIBCXX_ | tai"
+          strings /opt/hostedtoolcache/MATLAB/2026.1.999/x64/sys/os/glnxa64/libstdc++.so.6 | grep GLIBCXX_ | tail
 
           echo " "
           echo "objdump -C -T highsmex.mexa64 | grep ios_base_library_init"
@@ -121,10 +117,6 @@ jobs:
           echo " "
           echo "strings ../HiGHS/lib/libhighs_extras.a | grep GLIBCXX_3.4"
           strings ../HiGHS/lib/libhighs_extras.a | grep GLIBCXX_3.4
-
-          echo " "
-          echo "nm -A ../HiGHS/lib/libhighs_extras.a | grep ios_base_library_init"
-          nm -A ../HiGHS/lib/libhighs_extras.a | grep ios_base_library_init
 
           echo " "
           echo "ldd highsmex.mexa64"
