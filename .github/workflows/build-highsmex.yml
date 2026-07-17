@@ -107,6 +107,26 @@ jobs:
           ldd highsmex.mexa64 || true
 
           echo " "
+          echo "readelf --version-info highsmex.mexa64 | grep GLIBCXX"
+          readelf --version-info highsmex.mexa64 | grep GLIBCXX
+
+          echo " "
+          echo "objdump -T highsmex.mexa64 | grep GLIBCXX_3.4.32"
+          objdump -T highsmex.mexa64 | grep GLIBCXX_3.4.32
+
+          echo " "
+          echo "objdump -T highsmex.mexa64 | grep GLIBCXX"
+          objdump -T highsmex.mexa64 | grep GLIBCXX
+
+          echo " "
+          echo "ar t ../HiGHS/lib/libhighs.a | head"
+          ar t ../HiGHS/lib/libhighs.a | head
+
+          echo " "
+          echo "objdump -T highsmex.mexa64 | grep 3.4.32"
+          objdump -T highsmex.mexa64 | grep 3.4.32
+
+          echo " "
           echo "readelf -d highsmex.mexa64 | grep NEEDED"
           readelf -d highsmex.mexa64 | grep NEEDED || true
 
