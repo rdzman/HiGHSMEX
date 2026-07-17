@@ -103,6 +103,8 @@ jobs:
         shell: bash
         run: |
           ldd highsmex.mexa64
+          strings highsmex.mexa64 | grep GLIBCXX | sort -u
+          strings /lib/x86_64-linux-gnu/libstdc++.so.6 | grep -oE 'GLIBCXX_[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail
 
       - name: Check MEX functionality
         shell: bash
