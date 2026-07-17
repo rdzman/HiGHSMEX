@@ -52,6 +52,7 @@ jobs:
         shell: bash
         run: |
           ls -al *.mex* || true
+          ldd highsmex.mexa64 | grep -E 'libstdc\+\+|libgcc' || true
 
       - name: Check MEX functionality
         shell: bash
