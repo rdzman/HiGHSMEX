@@ -22,7 +22,7 @@ mexSrcFilePath = fullfile('.', 'highsmex.cpp');
 
 %% Build mex file
 compilerInfo=mex.getCompilerConfigurations('C++', 'Selected');
-compilerVendor=lower(compilerInfo.Manufacturer);
+compilerVendor=lower(compilerInfo.Manufacturer)
 switch compilerVendor
     case 'microsoft'
         compflags={ 'COMPFLAGS="$COMPFLAGS /std:c++20  /W3 "' };
@@ -36,12 +36,12 @@ switch compilerVendor
 %        compflags={ 'CXXFLAGS="$CXXFLAGS  -std=c++20  -Wall"' };
     case 'apple'
         compflags={ 'CXXFLAGS="$CXXFLAGS -std=c++20 -mmacosx-version-min=13.4 "', ...
-            'LDFLAGS="$LDFLAGS -mmacosx-version-min=13.4 "' };
+            'LDFLAGS="$LDFLAGS -mmacosx-version-min=13.4 -Wl,-framework,Accelerate"' };
 end
 if ispc         % Windows
     mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibDir), '-lhighs', '-lhighs_extras', '-lopenblas', '-v', compflags{:})
 elseif ismac    % macOS
-    mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibDir), '-lhighs', '-lhighs_extras', '-lz', ['LDFLAGS=$LDFLAGS -Wl,-framework,Accelerate'], '-v', compflags{:})
+    mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibDir), '-lhighs', '-lhighs_extras', '-lz', '-v', compflags{:})
 elseif isunix   % Linux
     mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibDir), '-lhighs', '-lhighs_extras', '-lopenblas', '-lz', '-v', compflags{:})
 %    mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibDir), '-lhighs', '-lhighs_extras', '-lopenblas', '-lz', 'LDFLAGS=$LDFLAGS -static-libstdc++ -static-libgcc', '-v', compflags{:})
