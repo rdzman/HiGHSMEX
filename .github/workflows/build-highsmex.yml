@@ -24,6 +24,27 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Look for static libs
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          ls -al /usr/lib/x86_64-linux-gnu/libstdc++.a /usr/lib/gcc/x86_64-linux-gnu/*/*/libstdc++.a 2>/dev/null || true
+          ls -al /usr/lib/x86_64-linux-gnu/libgcc.a /usr/lib/gcc/x86_64-linux-gnu/*/*/libgcc.a 2>/dev/null || true
+
+      - name: Install static libs
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libstdc++-static gcc g++
+
+      - name: Look for static libs (again)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          ls -al /usr/lib/x86_64-linux-gnu/libstdc++.a /usr/lib/gcc/x86_64-linux-gnu/*/*/libstdc++.a 2>/dev/null || true
+          ls -al /usr/lib/x86_64-linux-gnu/libgcc.a /usr/lib/gcc/x86_64-linux-gnu/*/*/libgcc.a 2>/dev/null || true
+
       - name: Set up MATLAB
         uses: matlab-actions/setup-matlab@v2
 
