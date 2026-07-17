@@ -21,15 +21,15 @@ highsLibDir = fullfile(highsInstallDir, 'lib');
 mexSrcFilePath = fullfile('.', 'highsmex.cpp');
 
 %% Build mex file
-compilerInfo=mex.getCompilerConfigurations('C++', 'Selected')
-compilerVendor=lower(compilerInfo.Manufacturer)
+compilerInfo=mex.getCompilerConfigurations('C++', 'Selected');
+compilerVendor=lower(compilerInfo.Manufacturer);
 switch compilerVendor
     case 'microsoft'
         compflags={ 'COMPFLAGS="$COMPFLAGS /std:c++20  /W3 "' };
 
     case 'gnu'
-%         compflags={ 'COMPFLAGS="$COMPFLAGS -std=c++20  -Wall -static-libstdc++ -static-libgcc"' };
-        compflags={ 'CXXFLAGS="$CXXFLAGS  -std=c++20  -Wall"' };
+        compflags={ 'COMPFLAGS="$COMPFLAGS -std=c++20  -Wall -static-libstdc++ -static-libgcc"' };
+%         compflags={ 'CXXFLAGS="$CXXFLAGS  -std=c++20  -Wall"' };
 
     case 'apple'
         compflags={ 'CXXFLAGS="$CXXFLAGS -std=c++20 -mmacosx-version-min=13.4 "', ...

@@ -35,21 +35,27 @@ jobs:
         run: |
           zipname="${{ matrix.highs_archive }}"
           url="https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/${zipname}"
-          echo "Downloading: $url"
           parent="$(dirname "${{ github.workspace }}")"
+
           echo "Parent: $parent"
           archive="${parent}/${zipname}"
+
+          echo "Downloading: $url"
           curl -L -o "$archive" "$url"
           dest="${parent}/HiGHS"
-          echo $dest
+
+          echo "Extracting: $archive"
+          echo "      into: $dest"
           mkdir -p "$dest"
           if [[ "$zipname" == *.tar.gz ]]; then
             tar -xzf "$archive" -C "$dest"
           else
             unzip -o "$archive" -d "$dest"
           fi
-          echo "parent dir"
+
+          echo "Parent dir listing:"
           ls -al ..
+
           echo "HiGHS dir from: ${{ matrix.highs_archive }}"
           ls -al "$dest"
           find "$dest" -maxdepth 2 -type d -print
@@ -74,4 +80,4 @@ jobs:
         shell: bash
         run: |
           $ML_CMD "fprintf('HiGHS Version: %s\nHiGHSMEX Version: %s\n', callhighs(string('ver')), verHiGHSMEX)"
-          $ML_CMD "c = [1;1]; soln=callhighs(c,c', 2, 2, c, c)"
+          $ML_CMD "c = [1;1]; soln=callhighs(c,c', 2, 2, c, c);"
