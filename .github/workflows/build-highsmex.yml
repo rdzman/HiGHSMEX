@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             highs_archive: highs-1.15.1-x86_64-linux-gnu-static-apache.tar.gz
 #           - os: macos-latest
 #             highs_archive: highs-1.15.1-arm-apple-static-apache.tar.gz
