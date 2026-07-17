@@ -103,6 +103,30 @@ jobs:
         shell: bash
         run: |
           echo " "
+          echo "nm -A ../HiGHS/lib/libhighs.a | grep ios_base_library_init"
+          nm -A ../HiGHS/lib/libhighs.a | grep ios_base_library_init
+
+          echo " "
+          echo "nm -A ../HiGHS/lib/libhighs_extras.a | grep ios_base_library_init"
+          nm -A ../HiGHS/lib/libhighs_extras.a | grep ios_base_library_init
+
+          echo " "
+          echo "objdump -C -T highsmex.mexa64 | grep ios_base_library_init"
+          objdump -C -T highsmex.mexa64 | grep ios_base_library_init
+
+          echo " "
+          echo "strings ../HiGHS/lib/libhighs.a | grep GLIBCXX_3.4"
+          strings ../HiGHS/lib/libhighs.a | grep GLIBCXX_3.4
+
+          echo " "
+          echo "strings ../HiGHS/lib/libhighs_extras.a | grep GLIBCXX_3.4"
+          strings ../HiGHS/lib/libhighs_extras.a | grep GLIBCXX_3.4
+
+          echo " "
+          echo "nm -A ../HiGHS/lib/libhighs_extras.a | grep ios_base_library_init"
+          nm -A ../HiGHS/lib/libhighs_extras.a | grep ios_base_library_init
+
+          echo " "
           echo "ldd highsmex.mexa64"
           ldd highsmex.mexa64 || true
 
