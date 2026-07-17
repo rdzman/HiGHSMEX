@@ -20,20 +20,20 @@ jobs:
         uses: MATPOWER/action-configure-matlab@v3-test
 
       - name: Download HiGHS (Windows static)
-        shell: pwsh
+        shell: bash
         run: |
-          $zipname = "highs-1.15.1-x86_64-windows-static-apache.zip"
+          zipname="highs-1.15.1-x86_64-windows-static-apache.zip"
           echo $zipname
-          $url = "https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/$zipname"
+          url="https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/${zipname}"
           echo $url
-          $parent = Split-Path "${{ github.workspace }}" -Parent
+          parent="$(dirname "${{ github.workspace }}")"
           echo $parent
-          $zip = Join-Path $parent $zipname
-          echo $zip
-          curl -L -o $zip $url
-          $dest = Join-Path $parent "HiGHS"
+          zip="${parent}/${zipname}"
+          curl -L -o "$zip" "$url"
+          dest="${parent}/HiGHS"
           echo $dest
-          Expand-Archive -Path $zip -DestinationPath $dest -Force
+          mkdir -p "$dest"
+          unzip -o "$zip" -d "$dest"
 
       - name: List parent folder and MEX files (before)
         shell: bash
