@@ -29,10 +29,8 @@ switch compilerVendor
 
     case 'gnu'
 %         compflags={ 'COMPFLAGS="$COMPFLAGS -std=c++20  -Wall -static-libstdc++ -static-libgcc"' };
-        compflags = {
-            'COMPFLAGS="$COMPFLAGS -std=c++20 -Wall"'
-            'LINKFLAGS="$LINKFLAGS -static-libstdc++ -static-libgcc"'
-        };
+        compflags = { 'COMPFLAGS="$COMPFLAGS -std=c++20 -Wall"', ...
+            'LINKFLAGS="$LINKFLAGS -static-libstdc++ -static-libgcc"' };
 %        compflags = {
 %            'COMPFLAGS="$COMPFLAGS -std=c++20 -Wall"'
 %            'LDFLAGS="$LDFLAGS -static-libstdc++ -static-libgcc"'
