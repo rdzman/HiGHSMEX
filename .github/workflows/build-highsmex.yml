@@ -36,6 +36,16 @@ jobs:
           ls -al /usr/lib/gcc/x86_64-linux-gnu/12*/libgcc.a 2>/dev/null || true
           ls -al /usr/lib/x86_64-linux-gnu/libstdc++.a 2>/dev/null || true
 
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 50
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 50
+          
+          sudo update-alternatives --set gcc /usr/bin/gcc-12
+          sudo update-alternatives --set g++ /usr/bin/g++-12
+          
+          gcc --version
+          g++ --version
+          readlink -f "$(which g++)"
+
       - name: Set up MATLAB
         uses: matlab-actions/setup-matlab@v2
 
