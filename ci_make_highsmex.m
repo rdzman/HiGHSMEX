@@ -28,11 +28,11 @@ switch compilerVendor
         compflags={ 'COMPFLAGS="$COMPFLAGS /std:c++20  /W3 "' };
 
     case 'gnu'
-%         compflags={ 'COMPFLAGS="$COMPFLAGS -std=c++20  -Wall -static-libstdc++ -static-libgcc"' };
-        compflags = { 'COMPFLAGS="$COMPFLAGS -std=c++20 -Wall"', ...
-            'LINKFLAGS="$LINKFLAGS -static-libstdc++ -static-libgcc"' };
+%        compflags={ 'COMPFLAGS="$COMPFLAGS -std=c++20  -Wall -static-libstdc++ -static-libgcc"' };
 %        compflags = { 'COMPFLAGS="$COMPFLAGS -std=c++20 -Wall"', ...
-%            'LDFLAGS="$LDFLAGS -static-libstdc++ -static-libgcc"' };
+%            'LINKFLAGS="$LINKFLAGS -static-libstdc++ -static-libgcc"' };
+        compflags = { 'COMPFLAGS="$COMPFLAGS -std=c++20 -Wall"', ...
+            'LDFLAGS="$LDFLAGS -static-libstdc++ -static-libgcc"' };
 %        compflags={ 'CXXFLAGS="$CXXFLAGS  -std=c++20  -Wall"' };
     case 'apple'
         compflags={ 'CXXFLAGS="$CXXFLAGS -std=c++20 -mmacosx-version-min=13.4 "', ...
