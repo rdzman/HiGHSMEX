@@ -102,8 +102,14 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
+          echo " "
+          echo "ldd highsmex.mexa64"
           ldd highsmex.mexa64
+          echo " "
+          echo "strings highsmex.mexa64 | grep GLIBCXX | sort -u"
           strings highsmex.mexa64 | grep GLIBCXX | sort -u
+          echo " "
+          echo "strings /lib/x86_64-linux-gnu/libstdc++.so.6 | grep -oE 'GLIBCXX_[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail"
           strings /lib/x86_64-linux-gnu/libstdc++.so.6 | grep -oE 'GLIBCXX_[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail
 
       - name: Check MEX functionality
