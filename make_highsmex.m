@@ -8,13 +8,14 @@
 %% Inputs
 
 % link static file distributed by the HiGHS which includes the HiPO solver
-if ispc
-    highsInstallDir = fullfile('..', 'HiGHS');
-elseif ismac
-    highsInstallDir = fullfile('..', 'highs-1.15.1-arm-apple-static-apache');
-else
-    disp('highsInstallDir variable not defined in make_highsmex.m');
-end
+highsInstallDir = fullfile('..', 'HiGHS');
+% if ispc
+%     highsInstallDir = fullfile('.', 'highs-1.15.1-x86_64-windows-static-apache');
+% elseif ismac
+%     highsInstallDir = fullfile('..', 'highs-1.15.1-arm-apple-static-apache');
+% else
+%     disp('highsInstallDir variable not defined in make_highsmex.m');
+% end
 % highsInstallDir = fullfile('.', 'HiGHS-1.13.1', 'installcpp20'); % link static file built from source
 
 % Path to the HiGHS library include directory
@@ -27,9 +28,8 @@ highsLibIncludeDir = fullfile(highsInstallDir, 'lib');
 mexSrcFilePath = fullfile('.', 'highsmex.cpp');
 
 %% Build mex file
-
-compilerInfo=mex.getCompilerConfigurations('C++', 'Selected');
-compilerVendor=lower(compilerInfo.Manufacturer);
+compilerInfo=mex.getCompilerConfigurations('C++', 'Selected')
+compilerVendor=lower(compilerInfo.Manufacturer)
 switch compilerVendor
     case 'microsoft'
         compflags={ 'COMPFLAGS="$COMPFLAGS  /std:c++20  /W3 "' };
@@ -43,12 +43,10 @@ switch compilerVendor
 end
 
 % mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-v', compflags{:})
-if ispc
+if ispc         % Windows
     mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-lhighs_extras', '-lopenblas', '-v', compflags{:})
-elseif ismac
+elseif ismac    % macOS
+    mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-lhighs_extras', '-lz', 'LDFLAGS=$LDFLAGS -Wl', '-v', compflags{:})
+elseif isunix   % Linux
     mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-lhighs_extras', '-lz', ['LDFLAGS=$LDFLAGS -Wl,-framework,Accelerate'], '-v', compflags{:})
-else
-    disp('Inputs to mex command not defined in make_highsmex.m');
 end
-
-% EOF

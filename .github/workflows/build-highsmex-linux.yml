@@ -1,4 +1,4 @@
-name: Build HiGHSMEX (Windows)
+name: Build HiGHSMEX (Linux)
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build-linux:
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -19,21 +19,21 @@ jobs:
       - name: Configure MATLAB
         uses: MATPOWER/action-configure-matlab@v3-test
 
-      - name: Download HiGHS (Windows static)
-        shell: pwsh
+      - name: Download HiGHS (Linux static)
+        shell: bash
         run: |
-          $zipname = "highs-1.15.1-x86_64-windows-static-apache.zip"
+          zipname="highs-1.15.1-x86_64-linux-gnu-static-apache.tar.gz"
           echo $zipname
-          $url = "https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/$zipname"
+          url="https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/${zipname}"
           echo $url
-          $parent = Split-Path "${{ github.workspace }}" -Parent
+          parent="$(dirname "${{ github.workspace }}")"
           echo $parent
-          $zip = Join-Path $parent $zipname
-          echo $zip
-          curl -L -o $zip $url
-          $dest = Join-Path $parent "HiGHS"
+          zip="${parent}/${zipname}"
+          curl -L -o "$zip" "$url"
+          dest="${parent}/HiGHS"
           echo $dest
-          Expand-Archive -Path $zip -DestinationPath $dest -Force
+          mkdir -p "$dest"
+          tar -xzf "$zip" -C "$dest"
 
       - name: List parent folder and MEX files (before)
         shell: bash
@@ -52,8 +52,3 @@ jobs:
         shell: bash
         run: |
           ls -al *.mex* || true
-
-      - name: List resulting files (pwsh)
-        shell: pwsh
-        run: |
-          Get-ChildItem -Recurse -Force ${{ github.workspace }} | Select-Object FullName
