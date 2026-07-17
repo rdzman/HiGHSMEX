@@ -22,7 +22,7 @@ mexSrcFilePath = fullfile('.', 'highsmex.cpp');
 
 %% Build mex file
 compilerInfo=mex.getCompilerConfigurations('C++', 'Selected');
-compilerVendor=lower(compilerInfo.Manufacturer)
+compilerVendor=lower(compilerInfo.Manufacturer);
 switch compilerVendor
     case 'microsoft'
         compflags={ 'COMPFLAGS="$COMPFLAGS /std:c++20  /W3 "' };

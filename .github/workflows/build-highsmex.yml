@@ -112,11 +112,11 @@ jobs:
 
           echo " "
           echo "strings ../HiGHS/lib/libhighs.a | grep GLIBCXX_3.4"
-          strings ../HiGHS/lib/libhighs.a | grep GLIBCXX_3.4
+          strings ../HiGHS/lib/libhighs.a | grep GLIBCXX_3.4 || true
 
           echo " "
           echo "strings ../HiGHS/lib/libhighs_extras.a | grep GLIBCXX_3.4"
-          strings ../HiGHS/lib/libhighs_extras.a | grep GLIBCXX_3.4
+          strings ../HiGHS/lib/libhighs_extras.a | grep GLIBCXX_3.4 || true
 
           echo " "
           echo "ldd highsmex.mexa64"
