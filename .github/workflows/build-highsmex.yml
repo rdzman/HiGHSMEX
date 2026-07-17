@@ -7,24 +7,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install GCC 11
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-11 g++-11
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
-          g++ --version
-      
-      - name: (Optional) show libstdc++ path
-        shell: bash
-        run: |
-          g++ -print-file-name=libstdc++.so
-          strings "$(g++ -print-file-name=libstdc++.so)" | grep -E 'GLIBCXX_3\.4\.32' | head -n 5 || true
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            highs_archive: highs-1.15.1-x86_64-linux-gnu-static-apache.tar.gz
+            extract_cmd: tar -xzf
+          - os: macos-latest
+            highs_archive: highs-1.15.1-arm-apple-static-apache.tar.gz
+            extract_cmd: tar -xzf
+          - os: windows-latest
+            highs_archive: highs-1.15.1-x86_64-windows-static-apache.zip
+            extract_cmd: unzip -q
 
+    steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
@@ -37,37 +36,42 @@ jobs:
       - name: Download HiGHS (Linux static)
         shell: bash
         run: |
-          zipname="highs-1.15.1-x86_64-linux-gnu-static-apache.tar.gz"
-          echo $zipname
+          zipname="${{ matrix.highs_archive }}"
           url="https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/${zipname}"
-          echo $url
+          echo "Downloading: $url"
           parent="$(dirname "${{ github.workspace }}")"
-          echo $parent
-          zip="${parent}/${zipname}"
-          curl -L -o "$zip" "$url"
+          echo "Parent: $parent"
+          archive="${parent}/${zipname}"
+          curl -L -o "$archive" "$url"
           dest="${parent}/HiGHS"
           echo $dest
           mkdir -p "$dest"
-          tar -xzf "$zip" -C "$dest"
+          if [[ "$zipname" == *.tar.gz ]]; then
+            tar -xzf "$archive" -C "$dest"
+          else
+            unzip -o "$archive" -d "$dest"
+          fi
 
       - name: List parent folder and MEX files (before)
         shell: bash
         run: |
           echo "parent dir"
           ls -al ..
+          echo "HiGHS dir from: ${{ matrix.highs_archive }}"
+          ls -al "$dest"
+          find "$dest" -maxdepth 2 -type d -print
           echo "repo root MEX files"
           ls -al *.mex* || true
 
-      - name: Build MEX (make_highsmex.m)
+      - name: Build MEX (ci_make_highsmex.m)
         shell: bash
         run: |
-          $ML_CMD "ver; cd '${{ github.workspace }}'; make_highsmex"
+          $ML_CMD "ver; cd '${{ github.workspace }}'; ci_make_highsmex"
 
       - name: List MEX files (after)
         shell: bash
         run: |
           ls -al *.mex* || true
-          ldd highsmex.mexa64 | grep -E 'libstdc\+\+|libgcc' || true
 
       - name: Check MEX functionality
         shell: bash
