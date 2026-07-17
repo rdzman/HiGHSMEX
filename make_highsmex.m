@@ -46,7 +46,7 @@ end
 if ispc         % Windows
     mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-lhighs_extras', '-lopenblas', '-v', compflags{:})
 elseif ismac    % macOS
-    mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-lhighs_extras', '-lz', 'LDFLAGS=$LDFLAGS -Wl', '-v', compflags{:})
-elseif isunix   % Linux
     mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-lhighs_extras', '-lz', ['LDFLAGS=$LDFLAGS -Wl,-framework,Accelerate'], '-v', compflags{:})
+elseif isunix   % Linux
+    mex(mexSrcFilePath, '-R2018a', sprintf('-I"%s"', highsIncludeDir), sprintf('-L"%s"', highsLibIncludeDir), '-lhighs', '-lhighs_extras', '-lz', 'LDFLAGS=$LDFLAGS -Wl', '-v', compflags{:})
 end
