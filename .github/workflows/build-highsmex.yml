@@ -76,6 +76,12 @@ jobs:
         run: |
           ls -al *.mex* || true
 
+      - name: Check what is dynamic
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          ldd highsmex.mexa64
+
       - name: Check MEX functionality
         shell: bash
         run: |
