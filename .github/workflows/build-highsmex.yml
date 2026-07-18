@@ -20,10 +20,18 @@ on:
         required: true
         type: boolean
         default: false
-      platforms:
-        description: "Comma-separated: windows,macos,linux"
+      build_linux:
         required: true
-        default: "windows,macos,linux"
+        type: boolean
+        default: false
+      build_macos:
+        required: true
+        type: boolean
+        default: false
+      build_windows:
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -34,16 +42,15 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux
-            highs_archive: highs-1.15.1-x86_64-linux-gnu-static-apache.tar.gz
           - os: macos-latest
             platform: macos
-            highs_archive: highs-1.15.1-arm-apple-static-apache.tar.gz
           - os: windows-latest
             platform: windows
-            highs_archive: highs-1.15.1-x86_64-windows-static-apache.zip
 
-    # Only run jobs included in input platforms
-    if: contains(fromJson('["' + join(split(inputs.platforms, ','), '","') + '"]'), matrix.platform)
+    # Only run the job for selected platforms
+    if: ${{ (matrix.platform == 'windows' && inputs.build_windows)
+         || (matrix.platform == 'macos'   && inputs.build_macos)
+         || (matrix.platform == 'linux'   && inputs.build_linux) }}
 
     steps:
       - name: Check out repository
