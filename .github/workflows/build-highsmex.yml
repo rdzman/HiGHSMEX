@@ -48,9 +48,7 @@ jobs:
             platform: windows
 
     # Only run the job for selected platforms
-    if: ${{ (matrix.platform == 'windows' && inputs.build_windows)
-         || (matrix.platform == 'macos'   && inputs.build_macos)
-         || (matrix.platform == 'linux'   && inputs.build_linux) }}
+    if: ${{ (matrix.platform == 'windows' && inputs.build_windows) || (matrix.platform == 'macos'   && inputs.build_macos) || (matrix.platform == 'linux'   && inputs.build_linux) }}
 
     steps:
       - name: Check out repository
