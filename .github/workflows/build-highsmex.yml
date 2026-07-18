@@ -4,7 +4,26 @@ on:
   push:
     branches:
       - testing
+    highs_version: "1.15.1"
   workflow_dispatch:
+    inputs:
+      highs_version:
+        description: "HiGHS version to use for MEX build"
+        required: true
+        default: "1.15.1"
+      build_branch:
+        description: "Branch to update with built MEX files"
+        required: true
+        default: "build-mex-files"
+      commit_updates:
+        description: "If true, commit updated MEX files back to build_branch"
+        required: true
+        type: boolean
+        default: false
+      platforms:
+        description: "Comma-separated: windows,macos,linux"
+        required: true
+        default: "windows,macos,linux"
 
 jobs:
   build:
@@ -13,16 +32,42 @@ jobs:
       fail-fast: false
       matrix:
         include:
-#           - os: ubuntu-latest
-#             highs_archive: highs-1.15.1-x86_64-linux-gnu-static-apache.tar.gz
+          - os: ubuntu-latest
+            platform: linux
+            highs_archive: highs-1.15.1-x86_64-linux-gnu-static-apache.tar.gz
           - os: macos-latest
+            platform: macos
             highs_archive: highs-1.15.1-arm-apple-static-apache.tar.gz
           - os: windows-latest
+            platform: windows
             highs_archive: highs-1.15.1-x86_64-windows-static-apache.zip
+
+    # Only run jobs included in input platforms
+    if: contains(fromJson('["' + join(split(inputs.platforms, ','), '","') + '"]'), matrix.platform)
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.build_branch }}
+
+      - name: HiGHS archive name (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          echo "HIGHS_ARCHIVE_NAME=highs-${{ inputs.highs_version }}-x86_64-linux-gnu-static-apache.tar.gz" >> $GITHUB_ENV
+
+      - name: HiGHS archive name (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          echo "HIGHS_ARCHIVE_NAME=highs-${{ inputs.highs_version }}-arm-apple-static-apache.tar.gz" >> $GITHUB_ENV
+
+      - name: HiGHS archive name (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo "HIGHS_ARCHIVE_NAME=highs-${{ inputs.highs_version }}-x86_64-windows-static-apache.zip" >> $GITHUB_ENV
 
       - name: Install GCC 12
         if: runner.os == 'Linux'
@@ -55,12 +100,11 @@ jobs:
       - name: Download and extract HiGHS (static)
         shell: bash
         run: |
-          zipname="${{ matrix.highs_archive }}"
-          url="https://github.com/ERGO-Code/HiGHS/releases/download/v1.15.1/${zipname}"
+          url="https://github.com/ERGO-Code/HiGHS/releases/download/v${{ inputs.highs_version }}/${HIGHS_ARCHIVE_NAME}"
           parent="$(dirname "${{ github.workspace }}")"
 
           echo "Parent: $parent"
-          archive="${parent}/${zipname}"
+          archive="${parent}/${HIGHS_ARCHIVE_NAME}"
 
           echo "Downloading: $url"
           curl -L -o "$archive" "$url"
@@ -69,7 +113,7 @@ jobs:
           echo "Extracting: $archive"
           echo "      into: $dest"
           mkdir -p "$dest"
-          if [[ "$zipname" == *.tar.gz ]]; then
+          if [[ "$HIGHS_ARCHIVE_NAME" == *.tar.gz ]]; then
             tar -xzf "$archive" -C "$dest"
           else
             unzip -o "$archive" -d "$dest"
@@ -78,7 +122,7 @@ jobs:
           echo "Parent dir listing:"
           ls -al ..
 
-          echo "HiGHS dir from: ${{ matrix.highs_archive }}"
+          echo "HiGHS dir from: ${HIGHS_ARCHIVE_NAME}"
           ls -al "$dest"
           find "$dest" -maxdepth 2 -type d -print
 
@@ -151,6 +195,7 @@ jobs:
           strings highsmex.mexa64 | grep GLIBCXX_ | sort -V | tail
 
       - name: Check MEX functionality
+        if: runner.os != 'Linux'
         shell: bash
         run: |
           $ML_CMD "fprintf('HiGHS Version: %s\nHiGHSMEX Version: %s\n', callhighs(string('ver')), verHiGHSMEX)"
