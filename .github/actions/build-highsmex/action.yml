@@ -1,0 +1,226 @@
+name: Build HiGHSMEX
+description: Common build steps for all platforms
+
+on:
+  push:
+    branches:
+      - testing
+    highs_version: "1.15.1"
+  workflow_dispatch:
+    inputs:
+      highs_version:
+        description: "HiGHS version to use for MEX build"
+        required: true
+        default: "1.15.1"
+      build_branch:
+        description: "Branch to update with built MEX files"
+        required: true
+        default: "build-mex-files"
+      commit_updates:
+        description: "If true, commit updated MEX files back to build_branch"
+        required: true
+        type: boolean
+        default: false
+      build_linux:
+        required: true
+        type: boolean
+        default: false
+      build_macos:
+        required: true
+        type: boolean
+        default: false
+      build_windows:
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: macos-latest
+            platform: macos
+          - os: windows-latest
+            platform: windows
+
+    # Only run the job for selected platforms
+    if: ${{ (matrix.platform == 'windows' && inputs.build_windows) || (matrix.platform == 'macos'   && inputs.build_macos) || (matrix.platform == 'linux'   && inputs.build_linux) }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.build_branch }}
+
+      - name: HiGHS archive name (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          echo "HIGHS_ARCHIVE_NAME=highs-${{ inputs.highs_version }}-x86_64-linux-gnu-static-apache.tar.gz" >> $GITHUB_ENV
+
+      - name: HiGHS archive name (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          echo "HIGHS_ARCHIVE_NAME=highs-${{ inputs.highs_version }}-arm-apple-static-apache.tar.gz" >> $GITHUB_ENV
+
+      - name: HiGHS archive name (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo "HIGHS_ARCHIVE_NAME=highs-${{ inputs.highs_version }}-x86_64-windows-static-apache.zip" >> $GITHUB_ENV
+
+      - name: Install GCC 12
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          
+          sudo apt-get install -y gcc-12 g++-12 libstdc++-12-dev libgcc-12-dev
+          
+          ls -al /usr/lib/gcc/x86_64-linux-gnu/12*/libstdc++.a 2>/dev/null || true
+          ls -al /usr/lib/gcc/x86_64-linux-gnu/12*/libgcc.a 2>/dev/null || true
+          ls -al /usr/lib/x86_64-linux-gnu/libstdc++.a 2>/dev/null || true
+
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 50
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 50
+          
+          sudo update-alternatives --set gcc /usr/bin/gcc-12
+          sudo update-alternatives --set g++ /usr/bin/g++-12
+          
+          gcc --version
+          g++ --version
+          readlink -f "$(which g++)"
+
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+
+      - name: Configure MATLAB
+        uses: MATPOWER/action-configure-matlab@v3-test
+
+      - name: Download and extract HiGHS (static)
+        shell: bash
+        run: |
+          url="https://github.com/ERGO-Code/HiGHS/releases/download/v${{ inputs.highs_version }}/${HIGHS_ARCHIVE_NAME}"
+          parent="$(dirname "${{ github.workspace }}")"
+
+          echo "Parent: $parent"
+          archive="${parent}/${HIGHS_ARCHIVE_NAME}"
+
+          echo "Downloading: $url"
+          curl -L -o "$archive" "$url"
+          dest="${parent}/HiGHS"
+
+          echo "Extracting: $archive"
+          echo "      into: $dest"
+          mkdir -p "$dest"
+          if [[ "$HIGHS_ARCHIVE_NAME" == *.tar.gz ]]; then
+            tar -xzf "$archive" -C "$dest"
+          else
+            unzip -o "$archive" -d "$dest"
+          fi
+
+          echo "Parent dir listing:"
+          ls -al ..
+
+          echo "HiGHS dir from: ${HIGHS_ARCHIVE_NAME}"
+          ls -al "$dest"
+          find "$dest" -maxdepth 2 -type d -print
+
+      - name: List MEX files (before)
+        shell: bash
+        run: |
+          echo "repo root MEX files"
+          ls -al *.mex* || true
+
+      - name: Build MEX (ci_make_highsmex.m)
+        shell: bash
+        run: |
+          $ML_CMD "ver; cd '${{ github.workspace }}'; ci_make_highsmex"
+
+      - name: List MEX files (after)
+        shell: bash
+        run: |
+          ls -al *.mex* || true
+
+      - name: Inspect MEX
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          echo " "
+          echo "strings /opt/hostedtoolcache/MATLAB/2026.1.999/x64/sys/os/glnxa64/libstdc++.so.6 | grep GLIBCXX_ | tai"
+          strings /opt/hostedtoolcache/MATLAB/2026.1.999/x64/sys/os/glnxa64/libstdc++.so.6 | grep GLIBCXX_ | tail
+
+          echo " "
+          echo "objdump -C -T highsmex.mexa64 | grep ios_base_library_init"
+          objdump -C -T highsmex.mexa64 | grep ios_base_library_init
+
+          echo " "
+          echo "strings ../HiGHS/lib/libhighs.a | grep GLIBCXX_3.4"
+          strings ../HiGHS/lib/libhighs.a | grep GLIBCXX_3.4 || true
+
+          echo " "
+          echo "strings ../HiGHS/lib/libhighs_extras.a | grep GLIBCXX_3.4"
+          strings ../HiGHS/lib/libhighs_extras.a | grep GLIBCXX_3.4 || true
+
+          echo " "
+          echo "ldd highsmex.mexa64"
+          ldd highsmex.mexa64 || true
+
+          echo " "
+          echo "readelf --version-info highsmex.mexa64 | grep GLIBCXX"
+          readelf --version-info highsmex.mexa64 | grep GLIBCXX
+
+          echo " "
+          echo "objdump -T highsmex.mexa64 | grep GLIBCXX_3.4.32"
+          objdump -T highsmex.mexa64 | grep GLIBCXX_3.4.32
+
+          echo " "
+          echo "objdump -T highsmex.mexa64 | grep GLIBCXX"
+          objdump -T highsmex.mexa64 | grep GLIBCXX
+
+          echo " "
+          echo "ar t ../HiGHS/lib/libhighs.a | head"
+          ar t ../HiGHS/lib/libhighs.a | head
+
+          echo " "
+          echo "objdump -T highsmex.mexa64 | grep 3.4.32"
+          objdump -T highsmex.mexa64 | grep 3.4.32
+
+          echo " "
+          echo "readelf -d highsmex.mexa64 | grep NEEDED"
+          readelf -d highsmex.mexa64 | grep NEEDED || true
+
+          echo " "
+          echo "strings highsmex.mexa64 | grep GLIBCXX_ | sort -V | tail"
+          strings highsmex.mexa64 | grep GLIBCXX_ | sort -V | tail
+
+      - name: Check MEX functionality
+        if: runner.os != 'Linux'
+        shell: bash
+        run: |
+          $ML_CMD "fprintf('HiGHS Version: %s\nHiGHSMEX Version: %s\n', callhighs(string('ver')), verHiGHSMEX)"
+          $ML_CMD "c = [1;1]; soln=callhighs(c,c', 2, 2, c, c);"
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: highsmex.mexa64
+          path: highsmex.mexa64
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS'
+        with:
+          name: highsmex.mexmaca64
+          path: highsmex.mexmaca64
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: highsmex.mexw64
+          path: highsmex.mexw64

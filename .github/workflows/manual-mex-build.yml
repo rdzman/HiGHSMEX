@@ -1,0 +1,62 @@
+name: Build HiGHSMEX
+
+on:
+  push:
+    branches:
+      - testing
+    highs_version: "1.15.1"
+  workflow_dispatch:
+    inputs:
+      highs_version:
+        description: "HiGHS version to use for MEX build"
+        required: true
+        default: "1.15.1"
+      build_branch:
+        description: "Branch to update with built MEX files"
+        required: true
+        default: "build-mex-files"
+      commit_updates:
+        description: "If true, commit updated MEX files back to build_branch"
+        required: true
+        type: boolean
+        default: false
+      build_linux:
+        required: true
+        type: boolean
+        default: true
+      build_macos:
+        required: true
+        type: boolean
+        default: true
+      build_windows:
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  build_windows:
+    if: ${{ inputs.build_windows }}
+    runs-on: windows-latest
+    steps:
+      - uses: ./.github/actions/build-highsmex
+        with:
+          build_branch: ${{ inputs.build_branch }}
+          platform: windows
+
+  build_macos:
+    if: ${{ inputs.build_macos }}
+    runs-on: macos-latest
+    steps:
+      - uses: ./.github/actions/build-highsmex
+        with:
+          build_branch: ${{ inputs.build_branch }}
+          platform: macos
+
+  build_linux:
+    if: ${{ inputs.build_linux }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/build-highsmex
+        with:
+          build_branch: ${{ inputs.build_branch }}
+          platform: linux
