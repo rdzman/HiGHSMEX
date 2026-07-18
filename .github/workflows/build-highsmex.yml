@@ -155,3 +155,21 @@ jobs:
         run: |
           $ML_CMD "fprintf('HiGHS Version: %s\nHiGHSMEX Version: %s\n', callhighs(string('ver')), verHiGHSMEX)"
           $ML_CMD "c = [1;1]; soln=callhighs(c,c', 2, 2, c, c);"
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: highsmex.mexa64
+          path: highsmex.mexa64
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS'
+        with:
+          name: highsmex.mexmaca64
+          path: highsmex.mexmaca64
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: highsmex.mexw64
+          path: highsmex.mexw64
