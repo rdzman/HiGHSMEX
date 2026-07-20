@@ -10,6 +10,14 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: HiGHS archive name (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        highs_dir_name="highs-${{ inputs.highs_version }}-x86_64-linux-gnu-static-apache"
+        echo "HIGHS_DIR_NAME=${highs_dir_name}" >> $GITHUB_ENV
+        echo "HIGHS_ARCHIVE_NAME=${highs_dir_name}.tar.gz" >> $GITHUB_ENV
+
     - name: HiGHS archive name (macOS)
       if: runner.os == 'macOS'
       shell: bash
@@ -78,10 +86,17 @@ runs:
         ls -al *.mex* || true
 
     - name: Check MEX functionality
+      if: runner.os != 'Linux'
       shell: bash
       run: |
         $ML_CMD "fprintf('HiGHS Version: %s\nHiGHSMEX Version: %s\n', callhighs(string('ver')), verHiGHSMEX)"
         $ML_CMD "c = [1;1]; soln=callhighs(c, c', 2, 2, c, c);"
+
+    - uses: actions/upload-artifact@v4
+      if: runner.os == 'Linux'
+      with:
+        name: highsmex.mexa64
+        path: highsmex.mexa64
 
     - uses: actions/upload-artifact@v4
       if: runner.os == 'macOS'

@@ -7,6 +7,10 @@ on:
         description: "HiGHS version to use for MEX build"
         required: true
         default: "1.15.1"
+      build_linux:
+        required: true
+        type: boolean
+        default: false
       build_macos:
         required: true
         type: boolean
@@ -17,6 +21,17 @@ on:
         default: true
 
 jobs:
+  build_linux:
+    if: ${{ inputs.build_linux }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Build Linux MEX file with HiGHS ${{ inputs.highs_version }}
+        uses: ./.github/actions/build-highsmex
+        with:
+          highs_version: ${{ inputs.highs_version }}
+
   build_macos:
     if: ${{ inputs.build_macos }}
     runs-on: macos-latest
